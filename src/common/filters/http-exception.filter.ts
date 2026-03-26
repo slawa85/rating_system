@@ -25,22 +25,30 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
+      const raw =
+        typeof exceptionResponse === 'string'
+          ? { message: exceptionResponse }
+          : (exceptionResponse as Record<string, unknown>);
+
+      const message = Array.isArray(raw.message)
+        ? raw.message.join(', ')
+        : String(raw.message ?? 'Error');
+
       const body: StandardErrorResponse = {
         statusCode: status,
-        message:
-          typeof exceptionResponse === 'string'
-            ? exceptionResponse
-            : (exceptionResponse as Record<string, unknown>).message as string,
-        error: (exceptionResponse as Record<string, unknown>)
-          .error as string | undefined,
-        errors: (exceptionResponse as Record<string, unknown>).errors as
-          | StandardErrorResponse['errors']
-          | undefined,
+        message,
+        error: typeof raw.error === 'string' ? raw.error : undefined,
+        errors: Array.isArray(raw.errors)
+          ? (raw.errors as StandardErrorResponse['errors'])
+          : undefined,
         traceId,
       };
 
       if (status >= 500) {
-        this.logger.error({ ...body, stack: exception.stack }, exception.message);
+        this.logger.error(
+          { ...body, stack: exception.stack },
+          exception.message,
+        );
       } else if (status >= 400) {
         this.logger.warn(body, exception.message);
       }

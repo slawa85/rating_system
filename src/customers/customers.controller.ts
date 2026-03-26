@@ -5,9 +5,9 @@ import {
   Param,
   Body,
   Query,
-  UsePipes,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service.js';
 import { createCustomerSchema } from './dto/create-customer.dto.js';
@@ -22,13 +22,14 @@ export class CustomersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(new ZodValidationPipe(createCustomerSchema))
-  create(@Body() dto: CreateCustomerDto) {
+  create(
+    @Body(new ZodValidationPipe(createCustomerSchema)) dto: CreateCustomerDto,
+  ) {
     return this.customersService.create(dto);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.customersService.findOne(id);
   }
 

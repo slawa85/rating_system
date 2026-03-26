@@ -9,7 +9,6 @@ import { CreateReviewDto } from './dto/create-review.dto.js';
 import { PaginationQuery } from '../common/dto/pagination.dto.js';
 import { PaginatedResponse } from '../common/types/pagination.types.js';
 import { ReviewResponse } from './types/review.types.js';
-import { v4 as uuidv4 } from 'uuid';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -22,42 +21,41 @@ export class ReviewsService {
     productId: string,
     dto: CreateReviewDto,
   ): Promise<ReviewResponse> {
-    await this.prisma.customer.findUniqueOrThrow({
+    const customer = await this.prisma.customer.findUnique({
       where: { id: dto.customerId },
-    }).catch(() => {
+    });
+    if (!customer) {
       throw new NotFoundException(
         `Customer with id "${dto.customerId}" not found`,
       );
-    });
+    }
 
-    await this.prisma.product.findUniqueOrThrow({
+    const product = await this.prisma.product.findUnique({
       where: { id: productId },
-    }).catch(() => {
+    });
+    if (!product) {
       throw new NotFoundException(
         `Product with id "${productId}" not found`,
       );
-    });
+    }
 
-    const reviewId = uuidv4();
+    const reviewId = crypto.randomUUID();
     const now = new Date();
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Pessimistic lock on the product row
         await tx.$queryRaw`
           SELECT id FROM products WHERE id = ${productId} FOR UPDATE
         `;
 
-        // Insert the review
         const [review] = await tx.$queryRaw<ReviewResponse[]>`
           INSERT INTO reviews (id, customer_id, product_id, rating, title, body, created_at, updated_at)
           VALUES (${reviewId}, ${dto.customerId}, ${productId}, ${dto.rating}, ${dto.title ?? null}, ${dto.body}, ${now}, ${now})
           RETURNING id, rating, title, body, customer_id AS "customerId", product_id AS "productId", created_at AS "createdAt", updated_at AS "updatedAt"
         `;
 
-        // Recalculate average rating
         const [stats] = await tx.$queryRaw<
-          { avg: number; cnt: number }[]
+          { avg: string; cnt: number }[]
         >`
           SELECT
             COALESCE(AVG(rating)::numeric(3,2), 0) AS avg,
@@ -66,14 +64,17 @@ export class ReviewsService {
           WHERE product_id = ${productId}
         `;
 
+        const avg = Number(stats.avg);
+        const cnt = Number(stats.cnt);
+
         await tx.$queryRaw`
           UPDATE products
-          SET average_rating = ${stats.avg}, review_count = ${stats.cnt}, updated_at = ${now}
+          SET average_rating = ${avg}, review_count = ${cnt}, updated_at = ${now}
           WHERE id = ${productId}
         `;
 
         this.logger.log(
-          `Review created for product ${productId}: new avg=${stats.avg}, count=${stats.cnt}`,
+          `Review created for product ${productId}: new avg=${avg}, count=${cnt}`,
         );
 
         return review;
@@ -87,7 +88,6 @@ export class ReviewsService {
           'Customer has already reviewed this product',
         );
       }
-      // Handle raw query unique violation (PostgreSQL error code 23505)
       if (
         error instanceof Error &&
         'code' in error &&
@@ -148,26 +148,22 @@ export class ReviewsService {
   }
 
   async remove(id: string): Promise<void> {
-    const review = await this.prisma.review.findUnique({ where: { id } });
-    if (!review) {
-      throw new NotFoundException(`Review with id "${id}" not found`);
-    }
-
-    const now = new Date();
-
     await this.prisma.$transaction(async (tx) => {
-      // Pessimistic lock on the product row
+      const review = await tx.review.findUnique({ where: { id } });
+      if (!review) {
+        throw new NotFoundException(`Review with id "${id}" not found`);
+      }
+
+      const now = new Date();
+
       await tx.$queryRaw`
         SELECT id FROM products WHERE id = ${review.productId} FOR UPDATE
       `;
 
-      await tx.$queryRaw`
-        DELETE FROM reviews WHERE id = ${id}
-      `;
+      await tx.review.delete({ where: { id } });
 
-      // Recalculate average rating
       const [stats] = await tx.$queryRaw<
-        { avg: number; cnt: number }[]
+        { avg: string; cnt: number }[]
       >`
         SELECT
           COALESCE(AVG(rating)::numeric(3,2), 0) AS avg,
@@ -176,14 +172,17 @@ export class ReviewsService {
         WHERE product_id = ${review.productId}
       `;
 
+      const avg = Number(stats.avg);
+      const cnt = Number(stats.cnt);
+
       await tx.$queryRaw`
         UPDATE products
-        SET average_rating = ${stats.avg}, review_count = ${stats.cnt}, updated_at = ${now}
+        SET average_rating = ${avg}, review_count = ${cnt}, updated_at = ${now}
         WHERE id = ${review.productId}
       `;
 
       this.logger.log(
-        `Review ${id} deleted from product ${review.productId}: new avg=${stats.avg}, count=${stats.cnt}`,
+        `Review ${id} deleted from product ${review.productId}: new avg=${avg}, count=${cnt}`,
       );
     });
   }

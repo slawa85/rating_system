@@ -6,9 +6,9 @@ import {
   Param,
   Body,
   Query,
-  UsePipes,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service.js';
 import { createReviewSchema } from './dto/create-review.dto.js';
@@ -23,17 +23,16 @@ export class ReviewsController {
 
   @Post('products/:productId/reviews')
   @HttpCode(HttpStatus.CREATED)
-  @UsePipes(new ZodValidationPipe(createReviewSchema))
   create(
-    @Param('productId') productId: string,
-    @Body() dto: CreateReviewDto,
+    @Param('productId', ParseUUIDPipe) productId: string,
+    @Body(new ZodValidationPipe(createReviewSchema)) dto: CreateReviewDto,
   ) {
     return this.reviewsService.create(productId, dto);
   }
 
   @Get('products/:productId/reviews')
   findByProduct(
-    @Param('productId') productId: string,
+    @Param('productId', ParseUUIDPipe) productId: string,
     @Query(new ZodValidationPipe(reviewQuerySchema)) query: PaginationQuery,
   ) {
     return this.reviewsService.findByProduct(productId, query);
@@ -41,7 +40,7 @@ export class ReviewsController {
 
   @Get('customers/:customerId/reviews')
   findByCustomer(
-    @Param('customerId') customerId: string,
+    @Param('customerId', ParseUUIDPipe) customerId: string,
     @Query(new ZodValidationPipe(reviewQuerySchema)) query: PaginationQuery,
   ) {
     return this.reviewsService.findByCustomer(customerId, query);
@@ -49,7 +48,7 @@ export class ReviewsController {
 
   @Delete('reviews/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id') id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.reviewsService.remove(id);
   }
 }
