@@ -10,14 +10,10 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { BusinessesService } from './businesses.service.js';
-import {
-  createBusinessSchema,
-  CreateBusinessDto,
-} from './dto/create-business.dto.js';
-import {
-  businessQuerySchema,
-  BusinessQueryDto,
-} from './dto/business-query.dto.js';
+import { createBusinessSchema } from './dto/create-business.dto.js';
+import type { CreateBusinessDto } from './dto/create-business.dto.js';
+import { businessQuerySchema } from './dto/business-query.dto.js';
+import type { BusinessQueryDto } from './dto/business-query.dto.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 
 @Controller('businesses')

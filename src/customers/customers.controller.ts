@@ -10,13 +10,11 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { CustomersService } from './customers.service.js';
-import {
-  createCustomerSchema,
-  CreateCustomerDto,
-} from './dto/create-customer.dto.js';
+import { createCustomerSchema } from './dto/create-customer.dto.js';
+import type { CreateCustomerDto } from './dto/create-customer.dto.js';
 import { customerQuerySchema } from './dto/customer-query.dto.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
-import { PaginationQuery } from '../common/dto/pagination.dto.js';
+import type { PaginationQuery } from '../common/dto/pagination.dto.js';
 
 @Controller('customers')
 export class CustomersController {
