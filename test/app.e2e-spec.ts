@@ -35,13 +35,13 @@ describe('Review System (e2e)', () => {
   beforeEach(async () => {
     await prisma.review.deleteMany();
     await prisma.customer.deleteMany();
-    await prisma.business.deleteMany();
+    await prisma.product.deleteMany();
   });
 
   afterAll(async () => {
     await prisma.review.deleteMany();
     await prisma.customer.deleteMany();
-    await prisma.business.deleteMany();
+    await prisma.product.deleteMany();
     await app.close();
   });
 
@@ -110,29 +110,29 @@ describe('Review System (e2e)', () => {
     });
   });
 
-  // --------------- Businesses ---------------
+  // --------------- Products ---------------
 
-  describe('Businesses', () => {
-    it('POST /businesses - should create a business', async () => {
+  describe('Products', () => {
+    it('POST /products - should create a product', async () => {
       const res = await request(app.getHttpServer())
-        .post('/businesses')
-        .send({ name: 'Test Biz', description: 'A test business' })
+        .post('/products')
+        .send({ name: 'Test Product', description: 'A test product' })
         .expect(201);
 
-      expect(res.body.name).toBe('Test Biz');
+      expect(res.body.name).toBe('Test Product');
       expect(res.body.reviewCount).toBe(0);
     });
 
-    it('GET /businesses - should sort by averageRating', async () => {
+    it('GET /products - should sort by name', async () => {
       await request(app.getHttpServer())
-        .post('/businesses')
+        .post('/products')
         .send({ name: 'Low Rated' });
       await request(app.getHttpServer())
-        .post('/businesses')
+        .post('/products')
         .send({ name: 'High Rated' });
 
       const res = await request(app.getHttpServer())
-        .get('/businesses?sortBy=name&order=asc')
+        .get('/products?sortBy=name&order=asc')
         .expect(200);
 
       expect(res.body.data[0].name).toBe('High Rated');
@@ -143,7 +143,7 @@ describe('Review System (e2e)', () => {
 
   describe('Reviews', () => {
     let customerId: string;
-    let businessId: string;
+    let productId: string;
 
     beforeEach(async () => {
       const customerRes = await request(app.getHttpServer())
@@ -151,15 +151,15 @@ describe('Review System (e2e)', () => {
         .send({ name: 'Reviewer', email: 'reviewer@test.com' });
       customerId = customerRes.body.id;
 
-      const businessRes = await request(app.getHttpServer())
-        .post('/businesses')
-        .send({ name: 'Reviewed Biz' });
-      businessId = businessRes.body.id;
+      const productRes = await request(app.getHttpServer())
+        .post('/products')
+        .send({ name: 'Reviewed Product' });
+      productId = productRes.body.id;
     });
 
-    it('POST /businesses/:id/reviews - should create review and update rating', async () => {
+    it('POST /products/:id/reviews - should create review and update rating', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({
           customerId,
           rating: 4,
@@ -169,49 +169,47 @@ describe('Review System (e2e)', () => {
         .expect(201);
 
       expect(res.body.rating).toBe(4);
-      expect(res.body.businessId).toBe(businessId);
+      expect(res.body.productId).toBe(productId);
 
-      // Verify the business average was updated
-      const bizRes = await request(app.getHttpServer())
-        .get(`/businesses/${businessId}`)
+      const prodRes = await request(app.getHttpServer())
+        .get(`/products/${productId}`)
         .expect(200);
 
-      expect(Number(bizRes.body.averageRating)).toBe(4);
-      expect(bizRes.body.reviewCount).toBe(1);
+      expect(Number(prodRes.body.averageRating)).toBe(4);
+      expect(prodRes.body.reviewCount).toBe(1);
     });
 
     it('should correctly recalculate average with multiple reviews', async () => {
-      // Create a second customer
       const c2 = await request(app.getHttpServer())
         .post('/customers')
         .send({ name: 'Reviewer2', email: 'r2@test.com' });
 
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId, rating: 5, body: 'Excellent!' })
         .expect(201);
 
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId: c2.body.id, rating: 3, body: 'Average.' })
         .expect(201);
 
-      const bizRes = await request(app.getHttpServer())
-        .get(`/businesses/${businessId}`)
+      const prodRes = await request(app.getHttpServer())
+        .get(`/products/${productId}`)
         .expect(200);
 
-      expect(Number(bizRes.body.averageRating)).toBe(4);
-      expect(bizRes.body.reviewCount).toBe(2);
+      expect(Number(prodRes.body.averageRating)).toBe(4);
+      expect(prodRes.body.reviewCount).toBe(2);
     });
 
     it('should reject duplicate review with 409', async () => {
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId, rating: 5, body: 'First review' })
         .expect(201);
 
       const res = await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId, rating: 3, body: 'Duplicate attempt' })
         .expect(409);
 
@@ -220,7 +218,7 @@ describe('Review System (e2e)', () => {
 
     it('should reject invalid rating with 422', async () => {
       const res = await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId, rating: 6, body: 'Bad rating' })
         .expect(422);
 
@@ -229,7 +227,7 @@ describe('Review System (e2e)', () => {
 
     it('should return 404 for non-existent customer', async () => {
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({
           customerId: '00000000-0000-0000-0000-000000000000',
           rating: 5,
@@ -244,34 +242,32 @@ describe('Review System (e2e)', () => {
         .send({ name: 'Reviewer2', email: 'r2@test.com' });
 
       const r1 = await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId, rating: 5, body: 'Five stars' });
 
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
+        .post(`/products/${productId}/reviews`)
         .send({ customerId: c2.body.id, rating: 3, body: 'Three stars' });
 
-      // Delete the 5-star review
       await request(app.getHttpServer())
         .delete(`/reviews/${r1.body.id}`)
         .expect(204);
 
-      // Business should now have avg=3, count=1
-      const bizRes = await request(app.getHttpServer())
-        .get(`/businesses/${businessId}`)
+      const prodRes = await request(app.getHttpServer())
+        .get(`/products/${productId}`)
         .expect(200);
 
-      expect(Number(bizRes.body.averageRating)).toBe(3);
-      expect(bizRes.body.reviewCount).toBe(1);
+      expect(Number(prodRes.body.averageRating)).toBe(3);
+      expect(prodRes.body.reviewCount).toBe(1);
     });
 
-    it('GET /businesses/:id/reviews - should list reviews for business', async () => {
+    it('GET /products/:id/reviews - should list reviews for product', async () => {
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
-        .send({ customerId, rating: 4, body: 'Nice place.' });
+        .post(`/products/${productId}/reviews`)
+        .send({ customerId, rating: 4, body: 'Nice product.' });
 
       const res = await request(app.getHttpServer())
-        .get(`/businesses/${businessId}/reviews`)
+        .get(`/products/${productId}/reviews`)
         .expect(200);
 
       expect(res.body.data).toHaveLength(1);
@@ -280,8 +276,8 @@ describe('Review System (e2e)', () => {
 
     it('GET /customers/:id/reviews - should list reviews by customer', async () => {
       await request(app.getHttpServer())
-        .post(`/businesses/${businessId}/reviews`)
-        .send({ customerId, rating: 4, body: 'Nice place.' });
+        .post(`/products/${productId}/reviews`)
+        .send({ customerId, rating: 4, body: 'Nice product.' });
 
       const res = await request(app.getHttpServer())
         .get(`/customers/${customerId}/reviews`)

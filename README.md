@@ -1,6 +1,6 @@
 # Product Review System
 
-A backend API for managing product reviews, similar to Amazon or Alza. Customers can review businesses, and the system automatically maintains up-to-date average ratings using pessimistic locking to guarantee consistency under concurrent writes.
+A backend API for managing product reviews, similar to Amazon or Alza. Customers can review products, and the system automatically maintains up-to-date average ratings using pessimistic locking to guarantee consistency under concurrent writes.
 
 ## Tech Stack
 
@@ -19,15 +19,15 @@ A backend API for managing product reviews, similar to Amazon or Alza. Customers
 
 ### Denormalized Average Rating
 
-`averageRating` and `reviewCount` are stored directly on the `businesses` table rather than computed on every read. This avoids an expensive `AVG()` join on every business listing request. The trade-off is write-time complexity: every review creation or deletion must recalculate and update these fields atomically.
+`averageRating` and `reviewCount` are stored directly on the `products` table rather than computed on every read. This avoids an expensive `AVG()` join on every product listing request. The trade-off is write-time complexity: every review creation or deletion must recalculate and update these fields atomically.
 
 ### Pessimistic Locking with `$queryRaw`
 
 When a review is created or deleted, the system:
-1. Acquires a row-level exclusive lock on the business (`SELECT ... FOR UPDATE`)
+1. Acquires a row-level exclusive lock on the product (`SELECT ... FOR UPDATE`)
 2. Inserts/deletes the review
 3. Recalculates `AVG(rating)` and `COUNT(*)`
-4. Updates the business row
+4. Updates the product row
 5. Commits the transaction, releasing the lock
 
 This is implemented via Prisma's `$transaction` with `$queryRaw` because Prisma's query builder does not expose `FOR UPDATE`. Pessimistic locking was chosen over optimistic locking because the contention window is short (a single aggregate query + update), making it simpler and more predictable than a version-column retry loop.
@@ -100,20 +100,20 @@ The API will be available at `http://localhost:3000`.
 | `GET` | `/customers/:id` | Get customer by ID |
 | `GET` | `/customers` | List customers (paginated) |
 
-### Businesses
+### Products
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `POST` | `/businesses` | Create a business |
-| `GET` | `/businesses/:id` | Get business by ID |
-| `GET` | `/businesses` | List businesses (paginated, sortable) |
+| `POST` | `/products` | Create a product |
+| `GET` | `/products/:id` | Get product by ID |
+| `GET` | `/products` | List products (paginated, sortable) |
 
 ### Reviews
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| `POST` | `/businesses/:businessId/reviews` | Create a review |
-| `GET` | `/businesses/:businessId/reviews` | List reviews for a business |
+| `POST` | `/products/:productId/reviews` | Create a review |
+| `GET` | `/products/:productId/reviews` | List reviews for a product |
 | `GET` | `/customers/:customerId/reviews` | List reviews by a customer |
 | `DELETE` | `/reviews/:id` | Delete a review |
 
@@ -127,7 +127,7 @@ npm run test:e2e
 ```
 
 The e2e tests cover:
-- Customer and business CRUD
+- Customer and product CRUD
 - Review creation with rating recalculation
 - Duplicate review rejection (409)
 - Rating recalculation after deletion
@@ -156,7 +156,7 @@ cloudtalk/
 │   ├── config/                    # App config + logger config
 │   ├── prisma/                    # PrismaModule + PrismaService (global)
 │   ├── customers/                 # Customers module
-│   ├── businesses/                # Businesses module
+│   ├── products/                  # Products module
 │   └── reviews/                   # Reviews module (with pessimistic locking)
 ├── test/                          # E2E tests
 ├── docker-compose.yml             # PostgreSQL 16

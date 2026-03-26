@@ -1,4 +1,4 @@
-export interface BusinessResponse {
+export interface ProductResponse {
   id: string;
   name: string;
   description: string | null;

@@ -18,7 +18,7 @@ model Customer {
   @@map("customers")
 }
 
-model Business {
+model Product {
   id            String   @id @default(uuid())
   name          String
   description   String?
@@ -29,8 +29,8 @@ model Business {
 
   reviews Review[]
 
-  @@index([averageRating], map: "idx_businesses_average_rating")
-  @@map("businesses")
+  @@index([averageRating], map: "idx_products_average_rating")
+  @@map("products")
 }
 
 model Review {
@@ -44,11 +44,11 @@ model Review {
   customerId String   @map("customer_id")
   customer   Customer @relation(fields: [customerId], references: [id])
 
-  businessId String   @map("business_id")
-  business   Business @relation(fields: [businessId], references: [id])
+  productId String   @map("product_id")
+  product   Product  @relation(fields: [productId], references: [id])
 
-  @@unique([customerId, businessId], map: "uq_reviews_customer_business")
-  @@index([businessId], map: "idx_reviews_business_id")
+  @@unique([customerId, productId], map: "uq_reviews_customer_product")
+  @@index([productId], map: "idx_reviews_product_id")
   @@index([customerId], map: "idx_reviews_customer_id")
   @@map("reviews")
 }

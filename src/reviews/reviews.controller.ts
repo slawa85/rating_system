@@ -21,22 +21,22 @@ import type { PaginationQuery } from '../common/dto/pagination.dto.js';
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
-  @Post('businesses/:businessId/reviews')
+  @Post('products/:productId/reviews')
   @HttpCode(HttpStatus.CREATED)
   @UsePipes(new ZodValidationPipe(createReviewSchema))
   create(
-    @Param('businessId') businessId: string,
+    @Param('productId') productId: string,
     @Body() dto: CreateReviewDto,
   ) {
-    return this.reviewsService.create(businessId, dto);
+    return this.reviewsService.create(productId, dto);
   }
 
-  @Get('businesses/:businessId/reviews')
-  findByBusiness(
-    @Param('businessId') businessId: string,
+  @Get('products/:productId/reviews')
+  findByProduct(
+    @Param('productId') productId: string,
     @Query(new ZodValidationPipe(reviewQuerySchema)) query: PaginationQuery,
   ) {
-    return this.reviewsService.findByBusiness(businessId, query);
+    return this.reviewsService.findByProduct(productId, query);
   }
 
   @Get('customers/:customerId/reviews')

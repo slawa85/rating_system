@@ -19,7 +19,7 @@ export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(
-    businessId: string,
+    productId: string,
     dto: CreateReviewDto,
   ): Promise<ReviewResponse> {
     await this.prisma.customer.findUniqueOrThrow({
@@ -30,11 +30,11 @@ export class ReviewsService {
       );
     });
 
-    await this.prisma.business.findUniqueOrThrow({
-      where: { id: businessId },
+    await this.prisma.product.findUniqueOrThrow({
+      where: { id: productId },
     }).catch(() => {
       throw new NotFoundException(
-        `Business with id "${businessId}" not found`,
+        `Product with id "${productId}" not found`,
       );
     });
 
@@ -43,16 +43,16 @@ export class ReviewsService {
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Pessimistic lock on the business row
+        // Pessimistic lock on the product row
         await tx.$queryRaw`
-          SELECT id FROM businesses WHERE id = ${businessId} FOR UPDATE
+          SELECT id FROM products WHERE id = ${productId} FOR UPDATE
         `;
 
         // Insert the review
         const [review] = await tx.$queryRaw<ReviewResponse[]>`
-          INSERT INTO reviews (id, customer_id, business_id, rating, title, body, created_at, updated_at)
-          VALUES (${reviewId}, ${dto.customerId}, ${businessId}, ${dto.rating}, ${dto.title ?? null}, ${dto.body}, ${now}, ${now})
-          RETURNING id, rating, title, body, customer_id AS "customerId", business_id AS "businessId", created_at AS "createdAt", updated_at AS "updatedAt"
+          INSERT INTO reviews (id, customer_id, product_id, rating, title, body, created_at, updated_at)
+          VALUES (${reviewId}, ${dto.customerId}, ${productId}, ${dto.rating}, ${dto.title ?? null}, ${dto.body}, ${now}, ${now})
+          RETURNING id, rating, title, body, customer_id AS "customerId", product_id AS "productId", created_at AS "createdAt", updated_at AS "updatedAt"
         `;
 
         // Recalculate average rating
@@ -63,17 +63,17 @@ export class ReviewsService {
             COALESCE(AVG(rating)::numeric(3,2), 0) AS avg,
             COUNT(*)::int AS cnt
           FROM reviews
-          WHERE business_id = ${businessId}
+          WHERE product_id = ${productId}
         `;
 
         await tx.$queryRaw`
-          UPDATE businesses
+          UPDATE products
           SET average_rating = ${stats.avg}, review_count = ${stats.cnt}, updated_at = ${now}
-          WHERE id = ${businessId}
+          WHERE id = ${productId}
         `;
 
         this.logger.log(
-          `Review created for business ${businessId}: new avg=${stats.avg}, count=${stats.cnt}`,
+          `Review created for product ${productId}: new avg=${stats.avg}, count=${stats.cnt}`,
         );
 
         return review;
@@ -84,7 +84,7 @@ export class ReviewsService {
         error.code === 'P2002'
       ) {
         throw new ConflictException(
-          'Customer has already reviewed this business',
+          'Customer has already reviewed this product',
         );
       }
       // Handle raw query unique violation (PostgreSQL error code 23505)
@@ -94,15 +94,15 @@ export class ReviewsService {
         (error as Record<string, unknown>).code === '23505'
       ) {
         throw new ConflictException(
-          'Customer has already reviewed this business',
+          'Customer has already reviewed this product',
         );
       }
       throw error;
     }
   }
 
-  async findByBusiness(
-    businessId: string,
+  async findByProduct(
+    productId: string,
     query: PaginationQuery,
   ): Promise<PaginatedResponse<ReviewResponse>> {
     const { page, limit } = query;
@@ -110,12 +110,12 @@ export class ReviewsService {
 
     const [data, total] = await Promise.all([
       this.prisma.review.findMany({
-        where: { businessId },
+        where: { productId },
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.review.count({ where: { businessId } }),
+      this.prisma.review.count({ where: { productId } }),
     ]);
 
     return {
@@ -156,9 +156,9 @@ export class ReviewsService {
     const now = new Date();
 
     await this.prisma.$transaction(async (tx) => {
-      // Pessimistic lock on the business row
+      // Pessimistic lock on the product row
       await tx.$queryRaw`
-        SELECT id FROM businesses WHERE id = ${review.businessId} FOR UPDATE
+        SELECT id FROM products WHERE id = ${review.productId} FOR UPDATE
       `;
 
       await tx.$queryRaw`
@@ -173,17 +173,17 @@ export class ReviewsService {
           COALESCE(AVG(rating)::numeric(3,2), 0) AS avg,
           COUNT(*)::int AS cnt
         FROM reviews
-        WHERE business_id = ${review.businessId}
+        WHERE product_id = ${review.productId}
       `;
 
       await tx.$queryRaw`
-        UPDATE businesses
+        UPDATE products
         SET average_rating = ${stats.avg}, review_count = ${stats.cnt}, updated_at = ${now}
-        WHERE id = ${review.businessId}
+        WHERE id = ${review.productId}
       `;
 
       this.logger.log(
-        `Review ${id} deleted from business ${review.businessId}: new avg=${stats.avg}, count=${stats.cnt}`,
+        `Review ${id} deleted from product ${review.productId}: new avg=${stats.avg}, count=${stats.cnt}`,
       );
     });
   }
