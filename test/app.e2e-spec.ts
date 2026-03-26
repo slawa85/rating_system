@@ -116,20 +116,35 @@ describe('Review System (e2e)', () => {
     it('POST /products - should create a product', async () => {
       const res = await request(app.getHttpServer())
         .post('/products')
-        .send({ name: 'Test Product', description: 'A test product' })
+        .send({ sku: 'TEST-001', name: 'Test Product', description: 'A test product' })
         .expect(201);
 
       expect(res.body.name).toBe('Test Product');
+      expect(res.body.sku).toBe('TEST-001');
       expect(res.body.reviewCount).toBe(0);
+    });
+
+    it('POST /products - should reject duplicate SKU with 409', async () => {
+      await request(app.getHttpServer())
+        .post('/products')
+        .send({ sku: 'DUP-SKU', name: 'First' })
+        .expect(201);
+
+      const res = await request(app.getHttpServer())
+        .post('/products')
+        .send({ sku: 'DUP-SKU', name: 'Second' })
+        .expect(409);
+
+      expect(res.body.message).toContain('already exists');
     });
 
     it('GET /products - should sort by name', async () => {
       await request(app.getHttpServer())
         .post('/products')
-        .send({ name: 'Low Rated' });
+        .send({ sku: 'LOW-001', name: 'Low Rated' });
       await request(app.getHttpServer())
         .post('/products')
-        .send({ name: 'High Rated' });
+        .send({ sku: 'HIGH-001', name: 'High Rated' });
 
       const res = await request(app.getHttpServer())
         .get('/products?sortBy=name&order=asc')
@@ -153,7 +168,7 @@ describe('Review System (e2e)', () => {
 
       const productRes = await request(app.getHttpServer())
         .post('/products')
-        .send({ name: 'Reviewed Product' });
+        .send({ sku: `REV-${Date.now()}`, name: 'Reviewed Product' });
       productId = productRes.body.id;
     });
 

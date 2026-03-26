@@ -1,16 +1,33 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { ProductQueryDto } from './dto/product-query.dto.js';
 import { PaginatedResponse } from '../common/types/pagination.types.js';
 import { ProductResponse } from './types/product.types.js';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateProductDto): Promise<ProductResponse> {
-    return this.prisma.product.create({ data: dto });
+    try {
+      return await this.prisma.product.create({ data: dto });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException(
+          `A product with SKU "${dto.sku}" already exists`,
+        );
+      }
+      throw error;
+    }
   }
 
   async findOne(id: string): Promise<ProductResponse> {

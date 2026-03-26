@@ -19,13 +19,27 @@ async function main() {
 
   const products = await Promise.all([
     prisma.product.create({
-      data: { name: 'Wireless Headphones', description: 'Noise-cancelling over-ear headphones' },
+      data: {
+        sku: 'HDPH-001',
+        name: 'Wireless Headphones',
+        description: 'Noise-cancelling over-ear headphones',
+        imageUrl: 'https://example.com/images/headphones.jpg',
+      },
     }),
     prisma.product.create({
-      data: { name: 'Mechanical Keyboard', description: 'RGB backlit mechanical keyboard with Cherry MX switches' },
+      data: {
+        sku: 'KBRD-002',
+        name: 'Mechanical Keyboard',
+        description: 'RGB backlit mechanical keyboard with Cherry MX switches',
+        imageUrl: 'https://example.com/images/keyboard.jpg',
+      },
     }),
     prisma.product.create({
-      data: { name: 'USB-C Hub', description: '7-in-1 USB-C hub with HDMI, USB-A, and SD card reader' },
+      data: {
+        sku: 'HUB-003',
+        name: 'USB-C Hub',
+        description: '7-in-1 USB-C hub with HDMI, USB-A, and SD card reader',
+      },
     }),
   ]);
 
