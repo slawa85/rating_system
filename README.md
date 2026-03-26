@@ -1,98 +1,173 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Product Review System
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A backend API for managing product reviews, similar to Amazon or Alza. Customers can review businesses, and the system automatically maintains up-to-date average ratings using pessimistic locking to guarantee consistency under concurrent writes.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech Stack
 
-## Description
+| Technology | Purpose |
+|---|---|
+| **NestJS** | Modular, opinionated Node.js framework with dependency injection |
+| **TypeScript** | Type safety across the entire codebase; types extracted into separate files when shared |
+| **Prisma** | Type-safe ORM with declarative schema and migrations |
+| **PostgreSQL** | Production database (also recommended for local dev via Docker) |
+| **Zod** | Schema-first request validation with automatic TypeScript type inference — no decorator boilerplate |
+| **Pino** | High-performance structured JSON logging with per-request `traceId` |
+| **nestjs-cls** | Continuation-local storage for propagating `traceId` across async boundaries |
+| **Helmet** | Sets security-related HTTP headers (`X-Content-Type-Options`, `Strict-Transport-Security`, etc.) |
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Architecture Decisions
 
-## Project setup
+### Denormalized Average Rating
+
+`averageRating` and `reviewCount` are stored directly on the `businesses` table rather than computed on every read. This avoids an expensive `AVG()` join on every business listing request. The trade-off is write-time complexity: every review creation or deletion must recalculate and update these fields atomically.
+
+### Pessimistic Locking with `$queryRaw`
+
+When a review is created or deleted, the system:
+1. Acquires a row-level exclusive lock on the business (`SELECT ... FOR UPDATE`)
+2. Inserts/deletes the review
+3. Recalculates `AVG(rating)` and `COUNT(*)`
+4. Updates the business row
+5. Commits the transaction, releasing the lock
+
+This is implemented via Prisma's `$transaction` with `$queryRaw` because Prisma's query builder does not expose `FOR UPDATE`. Pessimistic locking was chosen over optimistic locking because the contention window is short (a single aggregate query + update), making it simpler and more predictable than a version-column retry loop.
+
+### Zod over class-validator
+
+Zod provides schema-first validation where the TypeScript type is _inferred_ from the schema (`z.infer<typeof schema>`), eliminating the need for separate class definitions and decorator metadata (`reflect-metadata`). Schemas are composable — shared pagination fields are defined once in `common/dto/pagination.dto.ts` and extended by module-specific query DTOs via `.extend()`.
+
+### Helmet
+
+Registered globally in `main.ts` with default settings. Adds standard security headers with zero configuration:
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: SAMEORIGIN`
+- `Strict-Transport-Security` (HSTS)
+- Removes `X-Powered-By`
+
+### Pino + CLS for Structured Logging
+
+Every request gets a UUID v4 `traceId` (generated by middleware or accepted from the `X-Trace-Id` header). This ID is stored in continuation-local storage and automatically mixed into every Pino log line, making it easy to correlate all logs for a single request.
+
+## Trade-offs and Known Limitations
+
+| Concern | Detail |
+|---|---|
+| **SQLite incompatibility** | `SELECT ... FOR UPDATE` does not exist in SQLite. The pessimistic locking transaction only works against PostgreSQL. Use Docker for local dev. |
+| **Prisma raw SQL coupling** | The review creation/deletion logic uses `$queryRaw` for the locking transaction. This bypasses Prisma's type-safe query builder and is PostgreSQL-specific. |
+| **Decimal precision** | SQLite stores `Decimal` as `REAL` (floating point). PostgreSQL uses true `NUMERIC`. For this use case (3,2 precision), the practical impact is negligible. |
+| **No authentication** | The system has no auth layer. `customerId` is passed in the request body. In production, this would come from a JWT or session. |
+
+## Prerequisites
+
+- **Docker** (for PostgreSQL)
+- **Node.js** >= 20
+- **npm** >= 10
+
+## Getting Started
 
 ```bash
-$ npm install
+# 1. Start PostgreSQL
+docker compose up -d
+
+# 2. Configure environment
+cp .env.example .env
+
+# 3. Install dependencies
+npm install
+
+# 4. Generate Prisma client
+npx prisma generate
+
+# 5. Run database migrations
+npx prisma migrate dev
+
+# 6. Seed the database (optional)
+npx prisma db seed
+
+# 7. Start the development server
+npm run start:dev
 ```
 
-## Compile and run the project
+The API will be available at `http://localhost:3000`.
+
+## API Overview
+
+### Customers
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/customers` | Create a customer |
+| `GET` | `/customers/:id` | Get customer by ID |
+| `GET` | `/customers` | List customers (paginated) |
+
+### Businesses
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/businesses` | Create a business |
+| `GET` | `/businesses/:id` | Get business by ID |
+| `GET` | `/businesses` | List businesses (paginated, sortable) |
+
+### Reviews
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/businesses/:businessId/reviews` | Create a review |
+| `GET` | `/businesses/:businessId/reviews` | List reviews for a business |
+| `GET` | `/customers/:customerId/reviews` | List reviews by a customer |
+| `DELETE` | `/reviews/:id` | Delete a review |
+
+All responses include the `X-Trace-Id` header.
+
+## Testing
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Run e2e tests (requires a running PostgreSQL instance)
+npm run test:e2e
 ```
 
-## Run tests
+The e2e tests cover:
+- Customer and business CRUD
+- Review creation with rating recalculation
+- Duplicate review rejection (409)
+- Rating recalculation after deletion
+- Zod validation errors (422)
+- Trace ID propagation
+- Helmet security headers
 
-```bash
-# unit tests
-$ npm run test
+## Project Structure
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```
+cloudtalk/
+├── prisma/
+│   ├── schema.prisma              # Database schema (models, indexes, constraints)
+│   └── seed.ts                    # Sample data for development
+├── src/
+│   ├── main.ts                    # App bootstrap (Pino, Helmet, global pipes)
+│   ├── app.module.ts              # Root module
+│   ├── common/
+│   │   ├── middleware/             # TraceIdMiddleware
+│   │   ├── interceptors/          # LoggingInterceptor
+│   │   ├── filters/               # GlobalExceptionFilter
+│   │   ├── pipes/                 # ZodValidationPipe
+│   │   ├── dto/                   # Shared Zod schemas (pagination)
+│   │   ├── decorators/            # @TraceId() param decorator
+│   │   └── types/                 # Shared interfaces
+│   ├── config/                    # App config + logger config
+│   ├── prisma/                    # PrismaModule + PrismaService (global)
+│   ├── customers/                 # Customers module
+│   ├── businesses/                # Businesses module
+│   └── reviews/                   # Reviews module (with pessimistic locking)
+├── test/                          # E2E tests
+├── docker-compose.yml             # PostgreSQL 16
+└── .env.example                   # Environment template
 ```
 
-## Deployment
+## Environment Variables
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgresql://cloudtalk:cloudtalk@localhost:5432/cloudtalk?schema=public` |
+| `PORT` | Server port | `3000` |
+| `LOG_LEVEL` | Pino log level (`fatal`, `error`, `warn`, `info`, `debug`, `trace`) | `info` |
+| `NODE_ENV` | Environment (`development`, `production`) | — |
