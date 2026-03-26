@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  reviews Review[]
+
+  @@map("customers")
+}
+
+model Business {
+  id            String   @id @default(uuid())
+  name          String
+  description   String?
+  averageRating Decimal  @default(0) @map("average_rating") @db.Decimal(3, 2)
+  reviewCount   Int      @default(0) @map("review_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  reviews Review[]
+
+  @@index([averageRating], map: "idx_businesses_average_rating")
+  @@map("businesses")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  title     String?
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  businessId String   @map("business_id")
+  business   Business @relation(fields: [businessId], references: [id])
+
+  @@unique([customerId, businessId], map: "uq_reviews_customer_business")
+  @@index([businessId], map: "idx_reviews_business_id")
+  @@index([customerId], map: "idx_reviews_customer_id")
+  @@map("reviews")
+}
