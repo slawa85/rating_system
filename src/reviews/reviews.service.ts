@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -19,36 +20,26 @@ export class ReviewsService {
 
   async create(
     productId: string,
+    customerId: string,
     dto: CreateReviewDto,
   ): Promise<ReviewResponse> {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id: dto.customerId },
-    });
-    if (!customer) {
-      throw new NotFoundException(
-        `Customer with id "${dto.customerId}" not found`,
-      );
-    }
-
-    const product = await this.prisma.product.findUnique({
-      where: { id: productId },
-    });
-    if (!product) {
-      throw new NotFoundException(`Product with id "${productId}" not found`);
-    }
-
     const reviewId = crypto.randomUUID();
     const now = new Date();
 
     try {
       return await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`
+        const [product] = await tx.$queryRaw<{ id: string }[]>`
           SELECT id FROM products WHERE id = ${productId} FOR UPDATE
         `;
+        if (!product) {
+          throw new NotFoundException(
+            `Product with id "${productId}" not found`,
+          );
+        }
 
         const [review] = await tx.$queryRaw<ReviewResponse[]>`
           INSERT INTO reviews (id, customer_id, product_id, rating, title, body, created_at, updated_at)
-          VALUES (${reviewId}, ${dto.customerId}, ${productId}, ${dto.rating}, ${dto.title ?? null}, ${dto.body}, ${now}, ${now})
+          VALUES (${reviewId}, ${customerId}, ${productId}, ${dto.rating}, ${dto.title ?? null}, ${dto.body}, ${now}, ${now})
           RETURNING id, rating, title, body, customer_id AS "customerId", product_id AS "productId", created_at AS "createdAt", updated_at AS "updatedAt"
         `;
 
@@ -139,11 +130,15 @@ export class ReviewsService {
     };
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, customerId: string): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
       const review = await tx.review.findUnique({ where: { id } });
       if (!review) {
         throw new NotFoundException(`Review with id "${id}" not found`);
+      }
+
+      if (review.customerId !== customerId) {
+        throw new ForbiddenException('You can only delete your own reviews');
       }
 
       const now = new Date();

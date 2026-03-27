@@ -7,6 +7,11 @@ const envSchema = z
       .default('development'),
     DATABASE_URL: z.string().min(1),
     PORT: z.coerce.number().default(3000),
+    JWT_SECRET: z.string().min(32),
+    JWT_EXPIRATION: z
+      .string()
+      .regex(/^\d+[smhd]$/, 'Must be a valid duration (e.g. 30m, 1h, 7d)')
+      .default('1h'),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
       .optional(),

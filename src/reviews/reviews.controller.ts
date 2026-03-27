@@ -17,23 +17,30 @@ import type { CreateReviewDto } from './dto/create-review.dto.js';
 import { reviewQuerySchema } from './dto/review-query.dto.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { PaginationQuery } from '../common/dto/pagination.dto.js';
+import { Public } from '../common/decorators/public.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../auth/types/auth.types.js';
 
 @Controller()
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Post('products/:productId/reviews')
-  @Throttle({ short: { limit: 5, ttl: 1000 } })
-  @Throttle({ medium: { limit: 30, ttl: 60000 } })
-  @Throttle({ long: { limit: 100, ttl: 900000 } })
+  @Throttle({
+    short: { limit: 5, ttl: 1000 },
+    medium: { limit: 30, ttl: 60000 },
+    long: { limit: 100, ttl: 900000 },
+  })
   @HttpCode(HttpStatus.CREATED)
   create(
     @Param('productId', ParseUUIDPipe) productId: string,
     @Body(new ZodValidationPipe(createReviewSchema)) dto: CreateReviewDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.reviewsService.create(productId, dto);
+    return this.reviewsService.create(productId, user.sub, dto);
   }
 
+  @Public()
   @Get('products/:productId/reviews')
   findByProduct(
     @Param('productId', ParseUUIDPipe) productId: string,
@@ -42,17 +49,20 @@ export class ReviewsController {
     return this.reviewsService.findByProduct(productId, query);
   }
 
-  @Get('customers/:customerId/reviews')
-  findByCustomer(
-    @Param('customerId', ParseUUIDPipe) customerId: string,
+  @Get('me/reviews')
+  findMyReviews(
     @Query(new ZodValidationPipe(reviewQuerySchema)) query: PaginationQuery,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.reviewsService.findByCustomer(customerId, query);
+    return this.reviewsService.findByCustomer(user.sub, query);
   }
 
   @Delete('reviews/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.reviewsService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.reviewsService.remove(id, user.sub);
   }
 }

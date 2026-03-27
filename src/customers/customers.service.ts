@@ -1,37 +1,26 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateCustomerDto } from './dto/create-customer.dto.js';
 import { PaginationQuery } from '../common/dto/pagination.dto.js';
 import { PaginatedResponse } from '../common/types/pagination.types.js';
 import { CustomerResponse } from './types/customer.types.js';
-import { Prisma } from '@prisma/client';
+
+const CUSTOMER_SELECT = {
+  id: true,
+  name: true,
+  email: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
 
 @Injectable()
 export class CustomersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateCustomerDto): Promise<CustomerResponse> {
-    try {
-      return await this.prisma.customer.create({ data: dto });
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'A customer with this email already exists',
-        );
-      }
-      throw error;
-    }
-  }
-
   async findOne(id: string): Promise<CustomerResponse> {
-    const customer = await this.prisma.customer.findUnique({ where: { id } });
+    const customer = await this.prisma.customer.findUnique({
+      where: { id },
+      select: CUSTOMER_SELECT,
+    });
     if (!customer) {
       throw new NotFoundException(`Customer with id "${id}" not found`);
     }
@@ -46,6 +35,7 @@ export class CustomersService {
 
     const [data, total] = await Promise.all([
       this.prisma.customer.findMany({
+        select: CUSTOMER_SELECT,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },

@@ -1,25 +1,33 @@
 import { PrismaClient } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+
+if (process.env.NODE_ENV === 'production') {
+  throw new Error('Seed script must not run in production');
+}
 
 const prisma = new PrismaClient();
+const DEFAULT_PASSWORD = 'Password1';
 
 async function main() {
   console.log('Seeding database...');
 
+  const passwordHash = await bcrypt.hash(DEFAULT_PASSWORD, 12);
+
   const customers = await Promise.all([
     prisma.customer.upsert({
       where: { email: 'alice@example.com' },
-      update: {},
-      create: { name: 'Alice Johnson', email: 'alice@example.com' },
+      update: { passwordHash },
+      create: { name: 'Alice Johnson', email: 'alice@example.com', passwordHash },
     }),
     prisma.customer.upsert({
       where: { email: 'bob@example.com' },
-      update: {},
-      create: { name: 'Bob Smith', email: 'bob@example.com' },
+      update: { passwordHash },
+      create: { name: 'Bob Smith', email: 'bob@example.com', passwordHash },
     }),
     prisma.customer.upsert({
       where: { email: 'carol@example.com' },
-      update: {},
-      create: { name: 'Carol Williams', email: 'carol@example.com' },
+      update: { passwordHash },
+      create: { name: 'Carol Williams', email: 'carol@example.com', passwordHash },
     }),
   ]);
 
