@@ -38,9 +38,7 @@ describe('Review System (e2e)', () => {
   async function productIdBySku(sku: string): Promise<string> {
     const row = await prisma.product.findUnique({ where: { sku } });
     if (!row) {
-      throw new Error(
-        `No product with sku "${sku}". Run: npm run seed`,
-      );
+      throw new Error(`No product with sku "${sku}". Run: npm run seed`);
     }
     return row.id;
   }

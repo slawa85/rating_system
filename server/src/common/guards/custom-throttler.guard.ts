@@ -13,16 +13,16 @@ import type { JwtPayload } from '../../auth/types/auth.types.js';
  */
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Request): Promise<string> {
+  protected getTracker(req: Request): Promise<string> {
     const user = (req as Request & { user?: JwtPayload }).user;
 
     if (user?.sub) {
-      return `user:${user.sub}`;
+      return Promise.resolve(`user:${user.sub}`);
     }
 
     const ip = req.ip || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
-    return `ip:${ip}-${userAgent}`;
+    return Promise.resolve(`ip:${ip}-${userAgent}`);
   }
 
   protected throwThrottlingException(

@@ -57,7 +57,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout() {
+  logout() {
     return;
   }
 }
