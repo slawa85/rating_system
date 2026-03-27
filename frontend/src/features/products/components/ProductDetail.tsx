@@ -1,5 +1,5 @@
+import { useNavigate } from 'react-router-dom';
 import { ProductImage } from './ProductImage';
-import { RatingDisplay } from '@/features/reviews/components/RatingDisplay';
 import type { Product } from '../types/product.types';
 
 interface ProductDetailProps {
@@ -7,38 +7,56 @@ interface ProductDetailProps {
 }
 
 export function ProductDetail({ product }: ProductDetailProps) {
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <div className="flex flex-col md:flex-row gap-8">
-        <div className="md:w-1/2">
-          <ProductImage
-            src={product.imageUrl}
-            alt={product.name}
-            className="w-full h-96 rounded-lg"
-          />
-        </div>
+  const navigate = useNavigate();
 
-        <div className="md:w-1/2">
-          <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-          
-          <div className="mb-4">
-            <RatingDisplay
-              rating={product.averageRating}
-              showCount
-              count={product.reviewCount}
-              size="lg"
+  return (
+    <div>
+      <button
+        onClick={() => navigate('/')}
+        className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+      >
+        <svg
+          className="w-5 h-5 mr-2"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        Back to products
+      </button>
+
+      <div className="bg-white rounded-lg p-6">
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="md:w-1/2">
+            <ProductImage
+              src={product.imageUrl}
+              alt={product.name}
+              className="w-full aspect-square rounded-lg object-cover"
             />
           </div>
 
-          {product.description && (
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold mb-2">Description</h2>
-              <p className="text-gray-700">{product.description}</p>
-            </div>
-          )}
+          <div className="md:w-1/2">
+            {product.category && (
+              <p className="text-sm text-gray-500 mb-2">{product.category}</p>
+            )}
 
-          <div className="text-sm text-gray-500">
-            <p>SKU: {product.sku}</p>
+            <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
+
+            {product.price && (
+              <p className="text-2xl text-blue-600 font-semibold mb-4">
+                ${product.price.toFixed(2)}
+              </p>
+            )}
+
+            {product.description && (
+              <p className="text-gray-700 mb-6">{product.description}</p>
+            )}
           </div>
         </div>
       </div>

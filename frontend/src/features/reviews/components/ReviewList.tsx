@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ReviewCard } from './ReviewCard';
 import { ReviewSkeleton } from './ReviewSkeleton';
 import { Pagination } from '@/shared/components/Pagination';

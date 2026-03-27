@@ -4,6 +4,8 @@ export interface Product {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  category?: string;
+  price?: number;
   averageRating: number;
   reviewCount: number;
   createdAt: string;

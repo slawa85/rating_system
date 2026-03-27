@@ -1,9 +1,10 @@
+/** Matches API: full shape from GET /auth/me; login/register omit optional fields. */
 export interface Customer {
   id: string;
   name: string;
   email: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LoginDto {
@@ -17,7 +18,8 @@ export interface RegisterDto {
   password: string;
 }
 
+/** Backend returns `accessToken` (not `token`). */
 export interface AuthResponse {
+  accessToken: string;
   customer: Customer;
-  token: string;
 }
