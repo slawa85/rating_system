@@ -19,3 +19,11 @@ export interface ReviewListParams {
   page?: number;
   limit?: number;
 }
+
+export interface RatingDistribution {
+  5: number;
+  4: number;
+  3: number;
+  2: number;
+  1: number;
+}

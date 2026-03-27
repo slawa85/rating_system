@@ -11,6 +11,10 @@ export const useCreateReview = (productId: string) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products', productId] });
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
+      queryClient.invalidateQueries({ queryKey: ['reviewEligibility', productId] });
+      queryClient.invalidateQueries({
+        queryKey: ['ratingDistribution', productId],
+      });
     },
   });
 };

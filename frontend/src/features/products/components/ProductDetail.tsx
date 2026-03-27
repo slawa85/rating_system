@@ -35,7 +35,6 @@ export function ProductDetail({ product }: ProductDetailProps) {
         <div className="flex flex-col md:flex-row gap-8">
           <div className="md:w-1/2">
             <ProductImage
-              src={product.imageUrl}
               alt={product.name}
               className="w-full aspect-square rounded-lg object-cover"
             />

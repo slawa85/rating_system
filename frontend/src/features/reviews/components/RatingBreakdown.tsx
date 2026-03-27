@@ -1,19 +1,18 @@
+import type { RatingDistribution } from '../types/review.types';
+
 interface RatingBreakdownProps {
   averageRating: number;
   reviewCount: number;
-  ratingDistribution?: {
-    5: number;
-    4: number;
-    3: number;
-    2: number;
-    1: number;
-  };
+  ratingDistribution?: RatingDistribution;
+  /** When true and `ratingDistribution` is still undefined, show bar skeletons. */
+  isDistributionLoading?: boolean;
 }
 
 export function RatingBreakdown({
   averageRating,
   reviewCount,
   ratingDistribution,
+  isDistributionLoading = false,
 }: RatingBreakdownProps) {
   // Ensure averageRating is a valid number
   const numericRating =
@@ -21,13 +20,17 @@ export function RatingBreakdown({
       ? averageRating
       : parseFloat(String(averageRating)) || 0;
 
-  const distribution = ratingDistribution || {
-    5: Math.floor(reviewCount * 0.5),
-    4: Math.floor(reviewCount * 0.2),
-    3: Math.floor(reviewCount * 0.15),
-    2: Math.floor(reviewCount * 0.1),
-    1: Math.floor(reviewCount * 0.05),
-  };
+  const showDistributionSkeleton =
+    isDistributionLoading && ratingDistribution === undefined;
+
+  const distribution: RatingDistribution =
+    ratingDistribution ?? {
+      5: Math.floor(reviewCount * 0.5),
+      4: Math.floor(reviewCount * 0.2),
+      3: Math.floor(reviewCount * 0.15),
+      2: Math.floor(reviewCount * 0.1),
+      1: Math.floor(reviewCount * 0.05),
+    };
 
   const getPercentage = (count: number) => {
     if (reviewCount === 0) return 0;
@@ -60,6 +63,23 @@ export function RatingBreakdown({
         <div className="flex-1">
           <div className="space-y-3">
             {[5, 4, 3, 2, 1].map((stars) => {
+              if (showDistributionSkeleton) {
+                return (
+                  <div key={stars} className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 w-12">
+                      <span className="text-sm font-medium text-gray-400">
+                        {stars}
+                      </span>
+                      <div className="w-4 h-4 rounded bg-gray-200 animate-pulse" />
+                    </div>
+                    <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full w-2/5 bg-gray-300 animate-pulse rounded-full" />
+                    </div>
+                    <div className="w-12 h-4 bg-gray-200 rounded animate-pulse" />
+                  </div>
+                );
+              }
+
               const count = distribution[stars as keyof typeof distribution];
               const percentage = getPercentage(count);
 

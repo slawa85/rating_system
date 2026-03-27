@@ -1,10 +1,17 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
+import { ApiError } from '@/api/client';
 import { RatingInput } from './RatingInput';
 import { Input } from '@/shared/components/ui/Input';
 import { Button } from '@/shared/components/ui/Button';
 import { ErrorMessage } from '@/shared/components/ui/ErrorMessage';
 import { useCreateReview } from '../hooks/useCreateReview';
+
+/** Must match `REVIEW_ALREADY_EXISTS` in server `reviews.service.ts`. */
+// This could be improved by using a more generic error message and code.
+const REVIEW_ALREADY_EXISTS_CODE = 'REVIEW_ALREADY_EXISTS';
+const DUPLICATE_REVIEW_USER_MESSAGE =
+  'You can only leave one review per product. Remove your existing review below if you want to submit a new one.';
 
 interface ReviewFormProps {
   productId: string;
@@ -15,11 +22,23 @@ export function ReviewForm({ productId }: ReviewFormProps) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
-  const { mutate: createReview, isPending, error, isSuccess } = useCreateReview(productId);
+  const {
+    mutate: createReview,
+    isPending,
+    error,
+    isSuccess,
+  } = useCreateReview(productId);
+
+  const errorMessage =
+    error instanceof ApiError && error.code === REVIEW_ALREADY_EXISTS_CODE
+      ? DUPLICATE_REVIEW_USER_MESSAGE
+      : error instanceof Error
+        ? error.message
+        : 'An error occurred';
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    
+
     if (rating === 0) {
       return;
     }
@@ -46,19 +65,10 @@ export function ReviewForm({ productId }: ReviewFormProps) {
         </div>
       )}
 
-      {error && (
-        <ErrorMessage 
-          message={error instanceof Error ? error.message : 'An error occurred'} 
-          className="mb-4" 
-        />
-      )}
+      {error && <ErrorMessage message={errorMessage} className="mb-4" />}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <RatingInput
-          value={rating}
-          onChange={setRating}
-          disabled={isPending}
-        />
+        <RatingInput value={rating} onChange={setRating} disabled={isPending} />
 
         <Input
           label="Title (optional)"
@@ -71,7 +81,10 @@ export function ReviewForm({ productId }: ReviewFormProps) {
         />
 
         <div>
-          <label htmlFor="review-body" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="review-body"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Review
           </label>
           <textarea

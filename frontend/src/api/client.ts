@@ -1,5 +1,17 @@
 import { readStoredAuthToken } from '@/shared/utils/authToken';
 
+export class ApiError extends Error {
+  readonly statusCode: number;
+  readonly code?: string;
+
+  constructor(message: string, statusCode: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
+
 const API_URL = import.meta.env.VITE_API_URL;
 
 if (!API_URL) {
@@ -39,8 +51,17 @@ async function apiClient<T>(
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || 'Request failed');
+      const payload = (await response.json().catch(() => ({}))) as Record<
+        string,
+        unknown
+      >;
+      const msg =
+        typeof payload.message === 'string'
+          ? payload.message
+          : 'Request failed';
+      const code =
+        typeof payload.code === 'string' ? payload.code : undefined;
+      throw new ApiError(msg, response.status, code);
     }
 
     if (response.status === 204) return null as T;
