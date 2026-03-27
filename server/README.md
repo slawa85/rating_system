@@ -8,7 +8,7 @@ A backend API for managing product reviews, similar to Amazon or Alza. Customers
 |---|---|
 | **NestJS** | Modular, opinionated Node.js framework with dependency injection |
 | **TypeScript** | Type safety across the entire codebase; types extracted into separate files when shared |
-| **Prisma** | Type-safe ORM with declarative schema and migrations |
+| **Prisma** | Type-safe ORM with declarative schema and migrations. Uses Prisma 7 driver adapter model with `@prisma/adapter-pg` for PostgreSQL |
 | **PostgreSQL** | Production database (also recommended for local dev via Docker) |
 | **Zod** | Schema-first request validation with automatic TypeScript type inference — no decorator boilerplate |
 | **Pino** | High-performance structured JSON logging with per-request `traceId` |
