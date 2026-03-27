@@ -10,7 +10,7 @@ import { CreateReviewDto } from './dto/create-review.dto.js';
 import { PaginationQuery } from '../common/dto/pagination.dto.js';
 import { PaginatedResponse } from '../common/types/pagination.types.js';
 import { ReviewResponse } from './types/review.types.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client/client.js';
 
 @Injectable()
 export class ReviewsService {

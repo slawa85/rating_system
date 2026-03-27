@@ -1,9 +1,21 @@
-node_modules/
-dist/
-.env
-*.db
-*.db-journal
-coverage/
+# Backend (server)
+server/node_modules/
+server/dist/
+server/.env
+server/*.db
+server/*.db-journal
+server/coverage/
+server/generated/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.next/
+frontend/build/
+
+# IDE
 .cursor/
 
-/generated/prisma
+# OS
+.DS_Store

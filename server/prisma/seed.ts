@@ -1,11 +1,18 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma/client/client.js';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
 
 if (process.env.NODE_ENV === 'production') {
   throw new Error('Seed script must not run in production');
 }
 
-const prisma = new PrismaClient();
+const connectionString =
+  process.env.DATABASE_URL ||
+  'postgresql://cloudtalk:cloudtalk@localhost:5432/cloudtalk?schema=public';
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool as any);
+const prisma = new PrismaClient({ adapter });
 const DEFAULT_PASSWORD = 'Password1';
 
 async function main() {

@@ -8,7 +8,7 @@ import { CreateProductDto } from './dto/create-product.dto.js';
 import { ProductQueryDto } from './dto/product-query.dto.js';
 import { PaginatedResponse } from '../common/types/pagination.types.js';
 import { ProductResponse } from './types/product.types.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client/client.js';
 
 @Injectable()
 export class ProductsService {

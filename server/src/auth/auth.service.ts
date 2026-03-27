@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { AuthResponse, JwtPayload } from './types/auth.types.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client/client.js';
 
 const BCRYPT_SALT_ROUNDS = 12;
 const DUMMY_HASH =

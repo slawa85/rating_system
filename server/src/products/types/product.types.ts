@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../../../generated/prisma/client/client.js';
 
 export interface ProductResponse {
   id: string;
