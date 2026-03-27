@@ -9,6 +9,7 @@ import {
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { CustomersService } from './customers.service.js';
 import { createCustomerSchema } from './dto/create-customer.dto.js';
 import type { CreateCustomerDto } from './dto/create-customer.dto.js';
@@ -21,6 +22,9 @@ export class CustomersController {
   constructor(private readonly customersService: CustomersService) {}
 
   @Post()
+  @Throttle({ short: { limit: 3, ttl: 1000 } })
+  @Throttle({ medium: { limit: 20, ttl: 60000 } })
+  @Throttle({ long: { limit: 50, ttl: 900000 } })
   @HttpCode(HttpStatus.CREATED)
   create(
     @Body(new ZodValidationPipe(createCustomerSchema)) dto: CreateCustomerDto,
