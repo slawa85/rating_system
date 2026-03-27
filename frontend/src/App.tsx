@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './features/auth/context/AuthContext';
+import { AuthProvider } from './features/auth/context/AuthProvider';
 import { ErrorBoundary } from './shared/components/ErrorBoundary';
 import { AppRouter } from './router/AppRouter';
 
