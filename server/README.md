@@ -74,19 +74,7 @@ Cons:
 - **Deadlock risk** - though not an issue in this specific implementation
 
 **Optimistic Concurrency Control Alternative**
-
-Would involve adding a `version` field to products and implementing retry logic:
-```typescript
-// Add version field to products table
-const product = await tx.product.findUnique({ where: { id: productId } });
-// Insert review, calculate stats
-// Try to update product with version check
-await tx.product.update({
-  where: { id: productId, version: product.version },
-  data: { averageRating: avg, reviewCount: cnt, version: { increment: 1 } }
-});
-// If update affects 0 rows, retry the whole transaction
-```
+Would involve adding a `version` field to products and implementing retry logic.
 
 Pros:
 - **No blocking** - concurrent reviews can proceed in parallel
@@ -193,16 +181,6 @@ Authenticated users have accountability through their JWT, so they can be truste
 3. **Attack surface reduced** - Abuse requires creating verified accounts (harder than IP rotation)
 4. **Better UX** - Legitimate users behind corporate proxies/NATs aren't penalized
 
-**Tracking Strategy:**
-
-```typescript
-// Authenticated requests
-tracker = `user:${userId}` // Each user gets own quota
-
-// Unauthenticated requests
-tracker = `ip:${ip}-${userAgent}` // Shared per IP/browser
-```
-
 This means:
 - Alice (authenticated) can make 100 req/sec even if she shares an IP with Bob
 - Two users on public WiFi (unauthenticated) share the unauthenticated quota for that IP
@@ -217,17 +195,6 @@ Even though the global limits are generous, register/login endpoints override wi
 **Production Considerations:**
 
 Rate limits should be adjusted based on production metrics:
-
-```typescript
-// Log rate limit hits to identify legitimate users being blocked
-this.logger.warn('Rate limit exceeded', {
-  ip,
-  userAgent,
-  endpoint: req.path,
-  limit: throttlerLimitDetail.limit,
-  timeWindow: throttlerLimitDetail.ttl,
-});
-```
 
 **Adjust limits when:**
 - Legitimate users report being blocked → Increase limits
@@ -285,16 +252,7 @@ The system implements security measures suitable for development and demonstrati
 
 ### Security Roadmap
 
-The following improvements are planned for production readiness, listed by priority:
-
-#### Phase 1: Authentication & Authorization ✅ DONE
-
-**JWT Authentication System** — Implemented
-- Password authentication with bcrypt (12 rounds)
-- JWT token-based sessions with configurable expiration
-- `customerId` extracted from JWT `sub` claim
-- Ownership checks on review deletion (403 for non-owners)
-- Global `JwtAuthGuard` with `@Public()` decorator for open routes
+The following improvements are should be added for production readiness, listed by priority:
 
 **Email Verification**
 - Send verification emails on registration (SendGrid/Mailgun)
@@ -302,73 +260,21 @@ The following improvements are planned for production readiness, listed by prior
 - Add token-based email verification flow
 - Estimated effort: 1-2 days
 
-#### Phase 2: Enhanced Input Validation (High Priority)
-
 **Disposable Email Blocking**
 - Maintain blocklist of known disposable email domains
 - Reject registrations from throwaway email services
-- Estimated effort: 2-3 hours
 
 **Spam Detection in Reviews**
 - Detect excessive repeated characters
 - Block reviews containing URLs or promotional content
 - Minimum review length (10 characters)
 - Pattern-based spam detection
-- Estimated effort: 2-3 hours
-
-#### Phase 3: Abuse Detection & Reputation (Medium Priority)
-
-**IP Tracking & Forensics**
-- Log IP addresses and User-Agents for all operations
-- Add database indexes on IP fields
-- Enable post-incident analysis
-- Estimated effort: 4-6 hours
-
-**Account Reputation System**
-- Trust scoring based on account age, review patterns, and IP history
-- Flag accounts created from IPs with multiple recent registrations
-- Block or challenge low-trust accounts
-- Estimated effort: 1-2 days
-
-**Implementation approach:**
-```typescript
-// Trust score calculation factors:
-- Account age (bonus for accounts >30 days old)
-- Review frequency (penalty for >5 reviews in 24h)
-- IP sharing (penalty if IP created >3 accounts in 7 days)
-- Review count (suspicious if >50 total reviews)
-
-// Actions based on trust score:
-- Score < 20: Block action
-- Score 20-40: Require CAPTCHA
-- Score > 40: Allow
-```
-
-#### Phase 4: Review Moderation (Medium Priority)
-
-**Automated Moderation Queue**
-- Add review status: `PENDING`, `APPROVED`, `REJECTED`, `FLAGGED`
-- Auto-approve low-risk reviews
-- Flag suspicious reviews for manual review
-- Auto-reject high-risk reviews (profanity, spam patterns)
-- Only show approved reviews in public endpoints
-- Estimated effort: 2-3 days
-
-**Profanity & Content Filtering**
-- Integrate profanity detection library
-- Check for offensive content
-- Flag reviews for manual moderation
-- Estimated effort: 1 day
-
-#### Phase 5: Bot Protection (Lower Priority)
 
 **CAPTCHA Integration**
 - Add Google reCAPTCHA v3 to high-risk endpoints
 - Conditionally require CAPTCHA based on trust score
 - Challenge suspicious IPs automatically
 - Estimated effort: 1 day
-
-#### Phase 6: Monitoring & Alerting (Operational)
 
 **Abuse Detection Dashboards**
 - Query templates for detecting mass account creation
@@ -377,22 +283,6 @@ The following improvements are planned for production readiness, listed by prior
 - Integration with Better Stack for alerts
 - Estimated effort: 1-2 days
 
-**Automated Queries:**
-```sql
--- Detect mass account creation from single IP
-SELECT ip_address, COUNT(*) as accounts
-FROM customers
-WHERE created_at > NOW() - INTERVAL '24 hours'
-GROUP BY ip_address
-HAVING COUNT(*) > 5;
-
--- Detect review bombing patterns
-SELECT ip_address, COUNT(*) as reviews
-FROM reviews
-WHERE created_at > NOW() - INTERVAL '1 hour'
-GROUP BY ip_address
-HAVING COUNT(*) > 10;
-```
 
 ### Testing Security Improvements
 
@@ -522,7 +412,6 @@ The e2e tests cover:
 - Registration and login flow
 - JWT-protected route enforcement (401 without token)
 - Customer lookup (with passwordHash exclusion)
-- Product CRUD (auth-gated creation)
 - Review creation with rating recalculation (customerId from JWT)
 - Duplicate review rejection (409)
 - Ownership-enforced deletion (403 for non-owner)

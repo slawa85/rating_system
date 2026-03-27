@@ -118,13 +118,6 @@ src/
 - Delete own reviews
 - Optimistic updates
 
-### Phase 5 ✅ - Polish
-- Error boundaries
-- Loading skeletons
-- Empty states
-- Error handling
-- Responsive design
-
 ## API Integration
 
 The frontend expects the following API endpoints:

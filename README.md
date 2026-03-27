@@ -15,13 +15,7 @@ This is a monorepo containing two main components:
 
 ```bash
 cd server
-npm install
-cp .env.example .env
-# Edit .env with your configuration (generate JWT_SECRET)
-docker-compose up -d  # Start PostgreSQL
-npx prisma migrate dev
-npm run seed
-npm run start:dev
+# Follow setup instructions in server directory
 ```
 
 Backend will run on `http://localhost:3000`
@@ -34,6 +28,7 @@ See the [server README](./server/README.md) for detailed documentation.
 cd frontend
 # Follow setup instructions in frontend directory
 ```
+See the [frontend README](./frontend/README.md) for detailed documentation.
 
 ## Documentation
 
@@ -55,4 +50,8 @@ Each directory contains its own `package.json` and can be developed independentl
 - Pino Logging
 
 ### Frontend
-- (See frontend directory)
+- React 18 + TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- TanStack React Query
