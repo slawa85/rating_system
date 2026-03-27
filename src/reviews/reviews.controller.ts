@@ -10,7 +10,6 @@ import {
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import { ReviewsService } from './reviews.service.js';
 import { createReviewSchema } from './dto/create-review.dto.js';
 import type { CreateReviewDto } from './dto/create-review.dto.js';
@@ -26,11 +25,6 @@ export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Post('products/:productId/reviews')
-  @Throttle({
-    short: { limit: 5, ttl: 1000 },
-    medium: { limit: 30, ttl: 60000 },
-    long: { limit: 100, ttl: 900000 },
-  })
   @HttpCode(HttpStatus.CREATED)
   create(
     @Param('productId', ParseUUIDPipe) productId: string,

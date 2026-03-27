@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import {
-  sanitizeText,
-  sanitizeRichText,
-} from '../../common/utils/sanitize.js';
+import sanitizeHtml from 'sanitize-html';
 
 export const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
@@ -10,12 +7,12 @@ export const createReviewSchema = z.object({
     .string()
     .max(255)
     .optional()
-    .transform((t) => (t ? sanitizeText(t) : t)),
+    .transform((t) => (t ? sanitizeHtml(t) : t)),
   body: z
     .string()
     .min(1)
     .max(5000)
-    .transform((b) => sanitizeRichText(b)),
+    .transform((b) => sanitizeHtml(b)),
 });
 
 export type CreateReviewDto = z.infer<typeof createReviewSchema>;

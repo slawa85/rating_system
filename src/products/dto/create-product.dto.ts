@@ -1,25 +1,22 @@
 import { z } from 'zod';
-import {
-  sanitizeText,
-  sanitizeRichText,
-} from '../../common/utils/sanitize.js';
+import sanitizeHtml from 'sanitize-html';
 
 export const createProductSchema = z.object({
   sku: z
     .string()
     .min(1)
     .max(100)
-    .transform((s) => sanitizeText(s)),
+    .transform((s) => sanitizeHtml(s)),
   name: z
     .string()
     .min(1)
     .max(255)
-    .transform((n) => sanitizeText(n)),
+    .transform((n) => sanitizeHtml(n)),
   description: z
     .string()
     .max(2000)
     .optional()
-    .transform((d) => (d ? sanitizeRichText(d) : d)),
+    .transform((d) => (d ? sanitizeHtml(d) : d)),
   imageUrl: z.string().url().max(2048).optional(),
 });
 

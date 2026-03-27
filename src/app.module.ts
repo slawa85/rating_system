@@ -26,17 +26,17 @@ import { validateEnv } from './config/app.config.js';
       {
         name: 'short',
         ttl: 1000,
-        limit: 50,
+        limit: 100,
       },
       {
         name: 'medium',
         ttl: 60000,
-        limit: 500,
+        limit: 1000,
       },
       {
         name: 'long',
         ttl: 900000,
-        limit: 2000,
+        limit: 5000,
       },
     ]),
     LoggerModule.forRoot(createLoggerConfig()),
