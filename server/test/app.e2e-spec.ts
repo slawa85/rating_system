@@ -257,8 +257,8 @@ describe('Review System (e2e)', () => {
 
       const data = (res.body as { data: Array<{ name: string }> }).data;
       expect(data.length).toBeGreaterThanOrEqual(1);
-      // Seeded catalog (see prisma/seed.ts): Mechanical Keyboard, USB-C Hub, Wireless Headphones
-      expect(data[0].name).toBe('Mechanical Keyboard');
+      // Seeded catalog (see prisma/seed.ts): name ASC — leading digit sorts before letters
+      expect(data[0].name).toBe('27" 4K Monitor');
     });
   });
 
@@ -356,18 +356,16 @@ describe('Review System (e2e)', () => {
         .set(authHeader(auth.accessToken))
         .send({ rating: 3, body: 'Duplicate attempt' });
 
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBe(409);
+      expect((res.body as { code: string }).code).toBe('REVIEW_ALREADY_EXISTS');
+      expect((res.body as { message: string }).message).toContain(
+        'already reviewed',
+      );
       expect(
         await prisma.review.count({
           where: { customerId: auth.customer.id, productId },
         }),
       ).toBe(1);
-
-      if (res.status === 409) {
-        expect((res.body as { message: string }).message).toContain(
-          'already reviewed',
-        );
-      }
     });
 
     it('should reject invalid rating with 422', async () => {

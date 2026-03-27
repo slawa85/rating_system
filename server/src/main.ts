@@ -31,6 +31,18 @@ async function bootstrap() {
     credentials: true,
   });
 
+  const imgSrc = ["'self'", 'data:', 'https:'] as string[];
+  if (isDevelopment) {
+    // Vite (and other dev servers) use http://localhost:* — different origin than
+    // the API, and not covered by https: or 'self'.
+    imgSrc.push('http:');
+    try {
+      imgSrc.push(new URL(frontendUrl).origin);
+    } catch {
+      /* ignore invalid FRONTEND_URL */
+    }
+  }
+
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -38,7 +50,7 @@ async function bootstrap() {
           defaultSrc: ["'self'"],
           scriptSrc: ["'self'"],
           styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", 'data:', 'https:'],
+          imgSrc,
           connectSrc: ["'self'"],
           fontSrc: ["'self'"],
           objectSrc: ["'none'"],

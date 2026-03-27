@@ -40,6 +40,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         statusCode: status,
         message,
         error: typeof raw.error === 'string' ? raw.error : undefined,
+        code: typeof raw.code === 'string' ? raw.code : undefined,
         errors: Array.isArray(raw.errors)
           ? (raw.errors as StandardErrorResponse['errors'])
           : undefined,

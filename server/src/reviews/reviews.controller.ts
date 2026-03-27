@@ -35,6 +35,12 @@ export class ReviewsController {
   }
 
   @Public()
+  @Get('products/:productId/reviews/distribution')
+  getRatingDistribution(@Param('productId', ParseUUIDPipe) productId: string) {
+    return this.reviewsService.getRatingDistribution(productId);
+  }
+
+  @Public()
   @Get('products/:productId/reviews')
   findByProduct(
     @Param('productId', ParseUUIDPipe) productId: string,

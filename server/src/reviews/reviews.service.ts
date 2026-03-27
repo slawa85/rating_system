@@ -12,6 +12,9 @@ import { PaginatedResponse } from '../common/types/pagination.types.js';
 import { ReviewResponse } from './types/review.types.js';
 import { Prisma } from '../../generated/prisma/client/client.js';
 
+/** API error `code` for 409 duplicate review; frontend must use the same string. */
+const REVIEW_ALREADY_EXISTS = 'REVIEW_ALREADY_EXISTS';
+
 type ReviewRatingAggregateRow = {
   rating: number;
   _count: { _all: number };
@@ -55,6 +58,19 @@ export class ReviewsService {
     customerId: string,
     dto: CreateReviewDto,
   ): Promise<ReviewResponse> {
+    const existing = await this.prisma.review.findUnique({
+      where: {
+        customerId_productId: { customerId, productId },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ConflictException({
+        message: 'You have already reviewed this product.',
+        code: REVIEW_ALREADY_EXISTS,
+      });
+    }
+
     const reviewId = crypto.randomUUID();
     const now = new Date();
 
@@ -117,19 +133,22 @@ export class ReviewsService {
         customer: { name: customer.name },
       });
     } catch (error) {
-      const isPrismaUniqueViolation =
+      const isPrismaUnique =
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002';
+        (error.code === 'P2002' ||
+          error.message.includes('23505') ||
+          /duplicate key|unique constraint/i.test(error.message));
 
       const isPgUniqueViolation =
         error instanceof Error &&
         'code' in error &&
         (error as Record<string, unknown>).code === '23505';
 
-      if (isPrismaUniqueViolation || isPgUniqueViolation) {
-        throw new ConflictException(
-          'Customer has already reviewed this product',
-        );
+      if (isPrismaUnique || isPgUniqueViolation) {
+        throw new ConflictException({
+          message: 'You have already reviewed this product.',
+          code: REVIEW_ALREADY_EXISTS,
+        });
       }
       throw error;
     }
