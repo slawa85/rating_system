@@ -30,6 +30,17 @@ cd frontend
 ```
 See the [frontend README](./frontend/README.md) for detailed documentation.
 
+### Seeded test user (frontend login)
+
+After running `npm run seed` in [`server/`](./server/), you can sign in on the frontend with:
+
+| Field    | Value              |
+| -------- | ------------------ |
+| Email    | `test@example.com` |
+| Password | `Password1`        |
+
+(Alice, Bob, and Carol use the same password; the test account has no pre-seeded reviews so you can add your own.)
+
 ## Documentation
 
 - Backend Architecture & API: See [`server/README.md`](./server/README.md)
