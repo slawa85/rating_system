@@ -15,6 +15,7 @@ A backend API for managing product reviews, similar to Amazon or Alza. Customers
 | **nestjs-cls** | Continuation-local storage for propagating `traceId` across async boundaries |
 | **Helmet** | Sets security-related HTTP headers (`X-Content-Type-Options`, `Strict-Transport-Security`, etc.) |
 | **JWT + Passport** | Stateless authentication via `@nestjs/jwt` and `@nestjs/passport` with bcrypt password hashing |
+| **sanitize-html** | Input sanitization to prevent stored XSS attacks — strips dangerous HTML from user-generated content |
 
 ## Architecture Decisions
 
@@ -124,6 +125,34 @@ The system uses stateless JWT authentication with bcrypt password hashing (12 sa
 - Routes marked with `@Public()` skip the guard
 - `@CurrentUser()` decorator extracts the JWT payload for controllers
 - `JwtStrategy` validates the token signature and expiration automatically
+
+### XSS Protection via Input Sanitization
+
+The system implements defense-in-depth against stored XSS attacks by sanitizing all user-generated content before storage.
+
+**Two-tier sanitization strategy:**
+
+1. **Plain text fields** (`sanitizeText`) — strips ALL HTML tags
+   - Customer names
+   - Product names, SKUs
+   - Review titles
+   - **Example:** `<script>alert('xss')</script>` → ` ` (empty)
+
+2. **Rich text fields** (`sanitizeRichText`) — allows safe formatting tags
+   - Product descriptions
+   - Review bodies
+   - **Allowed tags:** `<b>`, `<i>`, `<em>`, `<strong>`, `<p>`, `<br>`, `<ul>`, `<ol>`, `<li>`
+   - **Strips:** `<script>`, `<iframe>`, event handlers, `style` attributes, `javascript:` URIs
+   - **Example:** `<p>Great!</p><script>alert(1)</script>` → `<p>Great!</p>`
+
+**Why this matters:**
+- Since this is a JSON API, the backend itself isn't vulnerable to reflected XSS
+- The risk is **stored XSS** — malicious content saved to the database and later rendered by frontends
+- Backend sanitization ensures malicious content never reaches the database, protecting all current and future clients
+
+**Additional protections:**
+- **CSP headers** via Helmet — blocks inline scripts, restricts resource origins
+- **Frontend responsibility** — clients should still use framework defaults (React auto-escapes) and never use `dangerouslySetInnerHTML` with user content
 
 ### Zod over class-validator
 
@@ -270,7 +299,8 @@ The system implements security measures suitable for development and demonstrati
 
 1. **JWT Authentication** - Stateless token-based auth with bcrypt password hashing (12 rounds)
 2. **Ownership Enforcement** - Users can only delete their own reviews (403 otherwise)
-3. **Rate Limiting** - Prevents mass account creation and review bombing (see Rate Limiting section above)
+3. **XSS Protection** - Input sanitization strips malicious HTML from all user-generated content
+4. **Rate Limiting** - Prevents mass account creation and review bombing (see Rate Limiting section above)
 4. **Input Validation** - Zod schemas validate all incoming data, preventing malformed requests
 5. **Pagination Limits** - Maximum 100 items per page prevents resource exhaustion
 6. **SQL Injection Protection** - Prisma's parameterized queries (`$queryRaw`) prevent SQL injection

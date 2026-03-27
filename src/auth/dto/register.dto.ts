@@ -1,7 +1,12 @@
 import { z } from 'zod';
+import { sanitizeText } from '../../common/utils/sanitize.js';
 
 export const registerSchema = z.object({
-  name: z.string().min(1).max(255),
+  name: z
+    .string()
+    .min(1)
+    .max(255)
+    .transform((n) => sanitizeText(n)),
   email: z
     .string()
     .email()
