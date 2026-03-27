@@ -58,7 +58,7 @@ describe('Review System (e2e)', () => {
         name: 'Alice',
         email: 'alice@test.com',
       });
-      expect(res.body.id).toBeDefined();
+      expect((res.body as { id: string }).id).toBeDefined();
       expect(res.headers['x-trace-id']).toBeDefined();
     });
 
@@ -73,7 +73,9 @@ describe('Review System (e2e)', () => {
         .send({ name: 'Bob', email: 'dup@test.com' })
         .expect(409);
 
-      expect(res.body.message).toContain('already exists');
+      expect((res.body as { message: string }).message).toContain(
+        'already exists',
+      );
     });
 
     it('POST /customers - should reject invalid body with 422', async () => {
@@ -82,8 +84,10 @@ describe('Review System (e2e)', () => {
         .send({ name: '', email: 'bad' })
         .expect(422);
 
-      expect(res.body.errors).toBeDefined();
-      expect(res.body.errors.length).toBeGreaterThan(0);
+      expect((res.body as { errors: unknown[] }).errors).toBeDefined();
+      expect((res.body as { errors: unknown[] }).errors.length).toBeGreaterThan(
+        0,
+      );
     });
 
     it('GET /customers/:id - should return 404 for non-existent', async () => {
@@ -104,9 +108,11 @@ describe('Review System (e2e)', () => {
         .get('/customers?page=1&limit=1')
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.meta.total).toBe(2);
-      expect(res.body.meta.totalPages).toBe(2);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
+      expect((res.body as { meta: { total: number } }).meta.total).toBe(2);
+      expect(
+        (res.body as { meta: { totalPages: number } }).meta.totalPages,
+      ).toBe(2);
     });
   });
 
@@ -116,12 +122,16 @@ describe('Review System (e2e)', () => {
     it('POST /products - should create a product', async () => {
       const res = await request(app.getHttpServer())
         .post('/products')
-        .send({ sku: 'TEST-001', name: 'Test Product', description: 'A test product' })
+        .send({
+          sku: 'TEST-001',
+          name: 'Test Product',
+          description: 'A test product',
+        })
         .expect(201);
 
-      expect(res.body.name).toBe('Test Product');
-      expect(res.body.sku).toBe('TEST-001');
-      expect(res.body.reviewCount).toBe(0);
+      expect((res.body as { name: string }).name).toBe('Test Product');
+      expect((res.body as { sku: string }).sku).toBe('TEST-001');
+      expect((res.body as { reviewCount: number }).reviewCount).toBe(0);
     });
 
     it('POST /products - should reject duplicate SKU with 409', async () => {
@@ -135,7 +145,9 @@ describe('Review System (e2e)', () => {
         .send({ sku: 'DUP-SKU', name: 'Second' })
         .expect(409);
 
-      expect(res.body.message).toContain('already exists');
+      expect((res.body as { message: string }).message).toContain(
+        'already exists',
+      );
     });
 
     it('GET /products - should sort by name', async () => {
@@ -150,7 +162,9 @@ describe('Review System (e2e)', () => {
         .get('/products?sortBy=name&order=asc')
         .expect(200);
 
-      expect(res.body.data[0].name).toBe('High Rated');
+      expect((res.body as { data: Array<{ name: string }> }).data[0].name).toBe(
+        'High Rated',
+      );
     });
   });
 
@@ -164,12 +178,12 @@ describe('Review System (e2e)', () => {
       const customerRes = await request(app.getHttpServer())
         .post('/customers')
         .send({ name: 'Reviewer', email: 'reviewer@test.com' });
-      customerId = customerRes.body.id;
+      customerId = (customerRes.body as { id: string }).id;
 
       const productRes = await request(app.getHttpServer())
         .post('/products')
         .send({ sku: `REV-${Date.now()}`, name: 'Reviewed Product' });
-      productId = productRes.body.id;
+      productId = (productRes.body as { id: string }).id;
     });
 
     it('POST /products/:id/reviews - should create review and update rating', async () => {
@@ -183,15 +197,17 @@ describe('Review System (e2e)', () => {
         })
         .expect(201);
 
-      expect(res.body.rating).toBe(4);
-      expect(res.body.productId).toBe(productId);
+      expect((res.body as { rating: number }).rating).toBe(4);
+      expect((res.body as { productId: string }).productId).toBe(productId);
 
       const prodRes = await request(app.getHttpServer())
         .get(`/products/${productId}`)
         .expect(200);
 
-      expect(Number(prodRes.body.averageRating)).toBe(4);
-      expect(prodRes.body.reviewCount).toBe(1);
+      expect(
+        Number((prodRes.body as { averageRating: number }).averageRating),
+      ).toBe(4);
+      expect((prodRes.body as { reviewCount: number }).reviewCount).toBe(1);
     });
 
     it('should correctly recalculate average with multiple reviews', async () => {
@@ -206,15 +222,21 @@ describe('Review System (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/products/${productId}/reviews`)
-        .send({ customerId: c2.body.id, rating: 3, body: 'Average.' })
+        .send({
+          customerId: (c2.body as { id: string }).id,
+          rating: 3,
+          body: 'Average.',
+        })
         .expect(201);
 
       const prodRes = await request(app.getHttpServer())
         .get(`/products/${productId}`)
         .expect(200);
 
-      expect(Number(prodRes.body.averageRating)).toBe(4);
-      expect(prodRes.body.reviewCount).toBe(2);
+      expect(
+        Number((prodRes.body as { averageRating: number }).averageRating),
+      ).toBe(4);
+      expect((prodRes.body as { reviewCount: number }).reviewCount).toBe(2);
     });
 
     it('should reject duplicate review with 409', async () => {
@@ -228,7 +250,9 @@ describe('Review System (e2e)', () => {
         .send({ customerId, rating: 3, body: 'Duplicate attempt' })
         .expect(409);
 
-      expect(res.body.message).toContain('already reviewed');
+      expect((res.body as { message: string }).message).toContain(
+        'already reviewed',
+      );
     });
 
     it('should reject invalid rating with 422', async () => {
@@ -237,7 +261,7 @@ describe('Review System (e2e)', () => {
         .send({ customerId, rating: 6, body: 'Bad rating' })
         .expect(422);
 
-      expect(res.body.errors).toBeDefined();
+      expect((res.body as { errors: unknown[] }).errors).toBeDefined();
     });
 
     it('should return 404 for non-existent customer', async () => {
@@ -262,18 +286,24 @@ describe('Review System (e2e)', () => {
 
       await request(app.getHttpServer())
         .post(`/products/${productId}/reviews`)
-        .send({ customerId: c2.body.id, rating: 3, body: 'Three stars' });
+        .send({
+          customerId: (c2.body as { id: string }).id,
+          rating: 3,
+          body: 'Three stars',
+        });
 
       await request(app.getHttpServer())
-        .delete(`/reviews/${r1.body.id}`)
+        .delete(`/reviews/${(r1.body as { id: string }).id}`)
         .expect(204);
 
       const prodRes = await request(app.getHttpServer())
         .get(`/products/${productId}`)
         .expect(200);
 
-      expect(Number(prodRes.body.averageRating)).toBe(3);
-      expect(prodRes.body.reviewCount).toBe(1);
+      expect(
+        Number((prodRes.body as { averageRating: number }).averageRating),
+      ).toBe(3);
+      expect((prodRes.body as { reviewCount: number }).reviewCount).toBe(1);
     });
 
     it('GET /products/:id/reviews - should list reviews for product', async () => {
@@ -285,8 +315,8 @@ describe('Review System (e2e)', () => {
         .get(`/products/${productId}/reviews`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.meta.total).toBe(1);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
+      expect((res.body as { meta: { total: number } }).meta.total).toBe(1);
     });
 
     it('GET /customers/:id/reviews - should list reviews by customer', async () => {
@@ -298,7 +328,7 @@ describe('Review System (e2e)', () => {
         .get(`/customers/${customerId}/reviews`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
+      expect((res.body as { data: unknown[] }).data).toHaveLength(1);
     });
   });
 

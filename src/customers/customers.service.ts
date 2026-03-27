@@ -22,7 +22,9 @@ export class CustomersService {
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
-        throw new ConflictException('A customer with this email already exists');
+        throw new ConflictException(
+          'A customer with this email already exists',
+        );
       }
       throw error;
     }

@@ -34,9 +34,7 @@ export class ReviewsService {
       where: { id: productId },
     });
     if (!product) {
-      throw new NotFoundException(
-        `Product with id "${productId}" not found`,
-      );
+      throw new NotFoundException(`Product with id "${productId}" not found`);
     }
 
     const reviewId = crypto.randomUUID();
@@ -54,9 +52,7 @@ export class ReviewsService {
           RETURNING id, rating, title, body, customer_id AS "customerId", product_id AS "productId", created_at AS "createdAt", updated_at AS "updatedAt"
         `;
 
-        const [stats] = await tx.$queryRaw<
-          { avg: string; cnt: number }[]
-        >`
+        const [stats] = await tx.$queryRaw<{ avg: string; cnt: number }[]>`
           SELECT
             COALESCE(AVG(rating)::numeric(3,2), 0) AS avg,
             COUNT(*)::int AS cnt
@@ -80,19 +76,15 @@ export class ReviewsService {
         return review;
       });
     } catch (error) {
-      if (
+      const isPrismaUniqueViolation =
         error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'Customer has already reviewed this product',
-        );
-      }
-      if (
+        error.code === 'P2002';
+      const isPgUniqueViolation =
         error instanceof Error &&
         'code' in error &&
-        (error as Record<string, unknown>).code === '23505'
-      ) {
+        (error as Record<string, unknown>).code === '23505';
+
+      if (isPrismaUniqueViolation || isPgUniqueViolation) {
         throw new ConflictException(
           'Customer has already reviewed this product',
         );
@@ -162,9 +154,7 @@ export class ReviewsService {
 
       await tx.review.delete({ where: { id } });
 
-      const [stats] = await tx.$queryRaw<
-        { avg: string; cnt: number }[]
-      >`
+      const [stats] = await tx.$queryRaw<{ avg: string; cnt: number }[]>`
         SELECT
           COALESCE(AVG(rating)::numeric(3,2), 0) AS avg,
           COUNT(*)::int AS cnt

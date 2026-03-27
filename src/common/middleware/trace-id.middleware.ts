@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ClsService } from 'nestjs-cls';
 
 const TRACE_ID_HEADER = 'x-trace-id';
-const TRACE_ID_PATTERN = /^[\w\-]{1,128}$/;
+const TRACE_ID_PATTERN = /^[\w-]{1,128}$/;
 
 @Injectable()
 export class TraceIdMiddleware implements NestMiddleware {

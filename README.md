@@ -23,14 +23,85 @@ A backend API for managing product reviews, similar to Amazon or Alza. Customers
 
 ### Pessimistic Locking with `$queryRaw`
 
-When a review is created or deleted, the system:
-1. Acquires a row-level exclusive lock on the product (`SELECT ... FOR UPDATE`)
-2. Inserts/deletes the review
-3. Recalculates `AVG(rating)` and `COUNT(*)`
-4. Updates the product row
-5. Commits the transaction, releasing the lock
+When a review is created or deleted, the system uses a pessimistic locking strategy to ensure rating accuracy under concurrent writes. Here's the detailed flow for review creation (`reviews.service.ts`):
 
-This is implemented via Prisma's `$transaction` with `$queryRaw` because Prisma's query builder does not expose `FOR UPDATE`. Pessimistic locking was chosen over optimistic locking because the contention window is short (a single aggregate query + update), making it simpler and more predictable than a version-column retry loop.
+#### Transaction Flow
+
+**1. Transaction wrapper**
+Everything executes within a Prisma transaction to ensure atomicity - either all operations succeed or none do.
+
+**2. Lock the product row**
+```sql
+SELECT id FROM products WHERE id = ${productId} FOR UPDATE
+```
+Acquires a row-level lock on the product to prevent race conditions. If two reviews are being created simultaneously, one will wait until the other completes. This is critical for accurate rating calculations.
+
+**3. Insert the review**
+Raw SQL insert that returns the newly created review with all fields. Uses `RETURNING` to get the inserted data back in one query instead of a separate SELECT.
+
+**4. Calculate new statistics**
+Aggregates all reviews for this product:
+- `AVG(rating)` - average rating across all reviews
+- `COUNT(*)` - total number of reviews
+- `COALESCE(..., 0)` - defaults to 0 if no reviews exist
+- `::numeric(3,2)` - formats average to 2 decimal places
+
+**5. Update product stats**
+Updates the denormalized `average_rating` and `review_count` columns on the product table with the freshly calculated values.
+
+**6. Log and return**
+Logs the operation with new stats for observability and returns the created review.
+
+#### Why Raw SQL?
+
+The `FOR UPDATE` lock and the aggregation query with `RETURNING` are easier/more efficient with raw SQL. Prisma's query builder doesn't expose `FOR UPDATE`, making `$queryRaw` necessary for this pattern.
+
+#### Pessimistic vs Optimistic Concurrency Control
+
+**Why Pessimistic Locking (Current Approach)?**
+
+Pros:
+- **Guaranteed accuracy** - ratings are always correct, no chance of lost updates
+- **Simple logic** - no retry loops or version checking needed
+- **Good for moderate concurrency** - works well when products don't get hammered with simultaneous reviews
+- **Short lock duration** - the lock is held briefly (just insert + aggregate + update)
+
+Cons:
+- **Blocking** - concurrent reviews for the same product wait in line
+- **Potential bottleneck** - a popular product getting 10+ reviews/second would serialize all of them
+- **Deadlock risk** - though not an issue in this specific implementation
+
+**Optimistic Concurrency Control Alternative**
+
+Would involve adding a `version` field to products and implementing retry logic:
+```typescript
+// Add version field to products table
+const product = await tx.product.findUnique({ where: { id: productId } });
+// Insert review, calculate stats
+// Try to update product with version check
+await tx.product.update({
+  where: { id: productId, version: product.version },
+  data: { averageRating: avg, reviewCount: cnt, version: { increment: 1 } }
+});
+// If update affects 0 rows, retry the whole transaction
+```
+
+Pros:
+- **No blocking** - concurrent reviews can proceed in parallel
+- **Better throughput** - under heavy concurrent load on the same product
+- **No deadlocks**
+
+Cons:
+- **Retry complexity** - needs exponential backoff, max retries, error handling
+- **Wasted work** - losing transactions throw away their computation
+- **More complex** - harder to reason about and debug
+
+**When to Switch to Optimistic:**
+- If profiling shows the `FOR UPDATE` causing significant wait times
+- If you have viral products regularly getting 10+ reviews per second
+- If you can tolerate brief rating inconsistencies
+
+For this review system, pessimistic locking is the right choice because most products won't get bombarded with simultaneous reviews, and rating accuracy is more important than theoretical throughput gains.
 
 ### Zod over class-validator
 

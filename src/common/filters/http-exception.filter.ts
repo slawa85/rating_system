@@ -19,7 +19,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const res = ctx.getResponse<Response>();
-    const traceId = this.cls.get('traceId') ?? 'unknown';
+    const traceId = this.cls.get<string>('traceId') ?? 'unknown';
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
@@ -32,7 +32,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
       const message = Array.isArray(raw.message)
         ? raw.message.join(', ')
-        : String(raw.message ?? 'Error');
+        : typeof raw.message === 'string'
+          ? raw.message
+          : 'Error';
 
       const body: StandardErrorResponse = {
         statusCode: status,

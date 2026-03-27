@@ -18,7 +18,7 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
-    const traceId = this.cls.get('traceId') ?? 'unknown';
+    const traceId = this.cls.get<string>('traceId') ?? 'unknown';
     const start = Date.now();
 
     return next.handle().pipe(

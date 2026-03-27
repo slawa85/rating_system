@@ -11,14 +11,16 @@ export function createLoggerConfig(): Params {
           : undefined,
       mixin() {
         const cls = ClsServiceManager.getClsService();
-        return { traceId: cls?.get('traceId') ?? 'unknown' };
+        return {
+          traceId: cls?.get<string>('traceId') ?? 'unknown',
+        };
       },
       serializers: {
-        req(req) {
-          return { method: req.method, url: req.url };
+        req(req: { method?: string; url?: string }) {
+          return { method: req.method ?? '', url: req.url ?? '' };
         },
-        res(res) {
-          return { statusCode: res.statusCode };
+        res(res: { statusCode?: number }) {
+          return { statusCode: res.statusCode ?? 0 };
         },
       },
     },
