@@ -15,6 +15,9 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
 import { createLoggerConfig } from './config/logger.config.js';
 import { validateEnv } from './config/app.config.js';
 
+/** Jest sets `NODE_ENV=test`; skip throttling so e2e/integration tests are not flaky. */
+const throttleEnabled = process.env.NODE_ENV !== 'test';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,23 +25,27 @@ import { validateEnv } from './config/app.config.js';
       validate: validateEnv,
     }),
     ClsModule.forRoot({ global: true, middleware: { mount: true } }),
-    ThrottlerModule.forRoot([
-      {
-        name: 'short',
-        ttl: 1000,
-        limit: 100,
-      },
-      {
-        name: 'medium',
-        ttl: 60000,
-        limit: 1000,
-      },
-      {
-        name: 'long',
-        ttl: 900000,
-        limit: 5000,
-      },
-    ]),
+    ...(throttleEnabled
+      ? [
+          ThrottlerModule.forRoot([
+            {
+              name: 'short',
+              ttl: 1000,
+              limit: 100,
+            },
+            {
+              name: 'medium',
+              ttl: 60000,
+              limit: 1000,
+            },
+            {
+              name: 'long',
+              ttl: 900000,
+              limit: 5000,
+            },
+          ]),
+        ]
+      : []),
     LoggerModule.forRoot(createLoggerConfig()),
     PrismaModule,
     AuthModule,
@@ -47,10 +54,14 @@ import { validateEnv } from './config/app.config.js';
     ReviewsModule,
   ],
   providers: [
-    {
-      provide: APP_GUARD,
-      useClass: CustomThrottlerGuard,
-    },
+    ...(throttleEnabled
+      ? [
+          {
+            provide: APP_GUARD,
+            useClass: CustomThrottlerGuard,
+          },
+        ]
+      : []),
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

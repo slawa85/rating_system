@@ -1,4 +1,11 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service.js';
 import { registerSchema } from './dto/register.dto.js';
@@ -7,10 +14,16 @@ import { loginSchema } from './dto/login.dto.js';
 import type { LoginDto } from './dto/login.dto.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import { Public } from '../common/decorators/public.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from './types/auth.types.js';
+import { CustomersService } from '../customers/customers.service.js';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly customersService: CustomersService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -34,5 +47,17 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   login(@Body(new ZodValidationPipe(loginSchema)) dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Get('me')
+  @HttpCode(HttpStatus.OK)
+  async getCurrentUser(@CurrentUser() user: JwtPayload) {
+    return this.customersService.findOne(user.sub);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async logout() {
+    return;
   }
 }

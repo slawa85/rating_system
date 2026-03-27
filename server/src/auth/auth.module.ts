@@ -6,10 +6,12 @@ import type { StringValue } from 'ms';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { CustomersModule } from '../customers/customers.module.js';
 
 @Module({
   imports: [
     PassportModule,
+    CustomersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

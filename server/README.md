@@ -199,7 +199,7 @@ Authenticated users have accountability through their JWT, so they can be truste
 // Authenticated requests
 tracker = `user:${userId}` // Each user gets own quota
 
-// Unauthenticated requests  
+// Unauthenticated requests
 tracker = `ip:${ip}-${userAgent}` // Shared per IP/browser
 ```
 
@@ -393,19 +393,6 @@ WHERE created_at > NOW() - INTERVAL '1 hour'
 GROUP BY ip_address
 HAVING COUNT(*) > 10;
 ```
-
-### Implementation Timeline
-
-| Phase | Priority | Effort | Security Impact |
-|-------|----------|--------|-----------------|
-| Phase 1 | ✅ Done | — | JWT auth + ownership checks implemented |
-| Phase 2 | 🟠 High | 4-6 hours | Blocks disposable emails and spam content |
-| Phase 3 | 🟡 Medium | 1.5-2.5 days | Automated abuse detection, reputation-based blocking |
-| Phase 4 | 🟡 Medium | 3-4 days | Prevents inappropriate content from appearing |
-| Phase 5 | 🔵 Lower | 1 day | Blocks automated bot attacks |
-| Phase 6 | 🟢 Operational | 1-2 days | Enables proactive monitoring |
-
-**Total Estimated Effort:** 10-15 days for full production-ready security posture
 
 ### Testing Security Improvements
 

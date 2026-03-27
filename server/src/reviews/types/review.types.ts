@@ -7,4 +7,5 @@ export interface ReviewResponse {
   productId: string;
   createdAt: Date;
   updatedAt: Date;
+  customerName: string;
 }

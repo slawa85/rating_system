@@ -11,6 +11,26 @@ async function bootstrap() {
 
   app.useLogger(app.get(Logger));
 
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  app.enableCors({
+    origin: isDevelopment
+      ? (
+          origin: string | undefined,
+          callback: (err: Error | null, allow?: boolean) => void,
+        ) => {
+          // In development, allow all localhost origins
+          if (!origin || origin.startsWith('http://localhost:')) {
+            callback(null, true);
+          } else {
+            callback(null, false);
+          }
+        }
+      : frontendUrl,
+    credentials: true,
+  });
+
   app.use(
     helmet({
       contentSecurityPolicy: {
