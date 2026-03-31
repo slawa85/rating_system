@@ -15,6 +15,7 @@ const envSchema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
       .optional(),
+    SESSION_SECRET: z.string().min(32),
   })
   .transform((config) => ({
     ...config,

@@ -25,6 +25,13 @@ export default tseslint.config(
     },
   },
   {
+    files: ['src/auth/strategies/session.strategy.ts'],
+    rules: {
+      // Nest `PassportStrategy` mixin leaves `super()` untyped for type-aware ESLint
+      '@typescript-eslint/no-unsafe-call': 'off',
+    },
+  },
+  {
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',

@@ -8,7 +8,11 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { LoginDto } from './dto/login.dto.js';
-import type { AuthResponse, JwtPayload } from './types/auth.types.js';
+import type {
+  AuthResponse,
+  JwtPayload,
+  SessionUser,
+} from './types/auth.types.js';
 import { Prisma } from '../../generated/prisma/client/client.js';
 
 const BCRYPT_SALT_ROUNDS = 12;
@@ -80,6 +84,55 @@ export class AuthService {
         name: customer.name,
         email: customer.email,
       },
+    };
+  }
+  async loginSession(dto: LoginDto): Promise<SessionUser> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (!customer) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const passwordValid = await bcrypt.compare(
+      dto.password,
+      customer?.passwordHash ?? DUMMY_HASH,
+    );
+
+    if (!passwordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+    };
+  }
+
+  async validateUser(email: string, password: string): Promise<SessionUser> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { email },
+    });
+
+    if (!customer) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    const passwordValid = await bcrypt.compare(
+      password,
+      customer?.passwordHash ?? DUMMY_HASH,
+    );
+
+    if (!passwordValid) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
     };
   }
 

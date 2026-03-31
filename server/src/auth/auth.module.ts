@@ -5,12 +5,13 @@ import { ConfigService } from '@nestjs/config';
 import type { StringValue } from 'ms';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { JwtStrategy } from './strategies/jwt.strategy.js';
+import { SessionStrategy } from './strategies/session.strategy.js';
+import { SessionSerializer } from './session.serializer.js';
 import { CustomersModule } from '../customers/customers.module.js';
 
 @Module({
   imports: [
-    PassportModule,
+    PassportModule.register({ session: true }),
     CustomersModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
@@ -24,6 +25,6 @@ import { CustomersModule } from '../customers/customers.module.js';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, SessionStrategy, SessionSerializer],
 })
 export class AuthModule {}

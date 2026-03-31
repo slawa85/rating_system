@@ -5,9 +5,32 @@ import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter.js';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js';
 import { ClsService } from 'nestjs-cls';
+import session from 'express-session';
+import passport from 'passport';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const configService = app.get(ConfigService);
+
+  app.use(
+    // express-session default export is callable; ESLint sometimes cannot resolve its type
+
+    session({
+      secret: configService.getOrThrow<string>('SESSION_SECRET'),
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+        httpOnly: true,
+        sameSite: 'lax',
+      },
+    }),
+  );
+
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   app.useLogger(app.get(Logger));
 

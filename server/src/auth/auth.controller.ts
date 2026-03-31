@@ -5,18 +5,21 @@ import {
   HttpCode,
   HttpStatus,
   Get,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service.js';
 import { registerSchema } from './dto/register.dto.js';
 import type { RegisterDto } from './dto/register.dto.js';
-import { loginSchema } from './dto/login.dto.js';
-import type { LoginDto } from './dto/login.dto.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import type { JwtPayload } from './types/auth.types.js';
+import type { SessionUser } from './types/auth.types.js';
 import { CustomersService } from '../customers/customers.service.js';
+import { AuthGuard } from '@nestjs/passport';
+import type { Request } from 'express';
+import 'express-session';
 
 @Controller('auth')
 export class AuthController {
@@ -38,6 +41,7 @@ export class AuthController {
   }
 
   @Public()
+  @UseGuards(AuthGuard('local'))
   @Post('login')
   @Throttle({
     short: { limit: 5, ttl: 1000 },
@@ -45,19 +49,27 @@ export class AuthController {
     long: { limit: 100, ttl: 900000 },
   })
   @HttpCode(HttpStatus.OK)
-  login(@Body(new ZodValidationPipe(loginSchema)) dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Req() req: Request) {
+    return { user: req.user as SessionUser };
   }
 
   @Get('me')
   @HttpCode(HttpStatus.OK)
-  async getCurrentUser(@CurrentUser() user: JwtPayload) {
-    return this.customersService.findOne(user.sub);
+  async getCurrentUser(@CurrentUser() user: SessionUser) {
+    return this.customersService.findOne(user.id);
   }
 
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  logout() {
-    return;
+  async logout(@Req() req: Request): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+      req.logout((err) => {
+        if (err) {
+          reject(err instanceof Error ? err : new Error(String(err)));
+        } else {
+          resolve();
+        }
+      });
+    });
   }
 }
